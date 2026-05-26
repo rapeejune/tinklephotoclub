@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- PWA / Offline Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
@@ -165,8 +166,18 @@
 </head>
 <body>
 
+<!-- Custom Alert Modal -->
+<div id="custom-alert" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="bg-white p-6 rounded-3xl shadow-2xl max-w-[260px] text-center border-4 border-[#ffdae0] transform transition-all scale-100">
+        <div class="text-3xl mb-2">⚠️</div>
+        <p id="custom-alert-msg" class="text-[#6e6367] font-black text-[12px] mb-5 leading-relaxed"></p>
+        <button onclick="document.getElementById('custom-alert').classList.remove('flex'); document.getElementById('custom-alert').classList.add('hidden');" class="bg-[#ff4d9a] text-white font-black rounded-full px-6 py-2 shadow-md active:scale-95 transition-transform">OK</button>
+    </div>
+</div>
+
 <div id="app-container">
 
+    <!-- STEP 0: HOME -->
     <div id="screen-HOME" class="screen active">
         <div class="toy-window" style="background-color: var(--pastel-pink); height: 60vh;">
             <div class="flex flex-col items-center justify-center h-full relative px-6 z-10 w-full overflow-hidden">
@@ -194,6 +205,7 @@
         <div class="toy-hidden-area"></div>
     </div>
 
+    <!-- STEP 1: MODE SELECT -->
     <div id="screen-MODE" class="screen">
         <div class="toy-window" style="background-color: var(--pastel-yellow);">
             <button class="back-btn" onclick="goBack('MODE')">◀</button>
@@ -202,11 +214,13 @@
                 <p class="header-subtitle mt-1 text-pink-500">แตะเลือกรูปแบบการถ่ายรูปได้เลย!</p>
             </div>
             <div class="w-full px-6 flex flex-col justify-center gap-4 flex-1 overflow-y-auto no-scrollbar" id="mode-list-container">
-                </div>
+                <!-- Modes rendered via JS -->
+            </div>
         </div>
         <div class="toy-hidden-area"></div>
     </div>
 
+    <!-- STEP 2: LAYOUT SELECT (CAROUSEL) -->
     <div id="screen-LAYOUT" class="screen">
         <div class="toy-window" style="background-color: var(--pastel-peach);">
             <button class="back-btn" onclick="goBack('LAYOUT')">◀</button>
@@ -237,6 +251,7 @@
         <div class="toy-hidden-area"></div>
     </div>
 
+    <!-- STEP 3: FRAME SELECT -->
     <div id="screen-FRAME" class="screen">
         <div class="toy-window" style="background-color: var(--pastel-lavender);">
             <button class="back-btn" onclick="goBack('FRAME')">◀</button>
@@ -264,6 +279,7 @@
         <div class="toy-hidden-area"></div>
     </div>
 
+    <!-- STEP 4: FILTER SELECT -->
     <div id="screen-FILTER" class="screen">
         <div class="toy-window" style="background-color: var(--pastel-blue);">
             <button class="back-btn" onclick="goBack('FILTER')">◀</button>
@@ -280,6 +296,7 @@
         <div class="toy-hidden-area"></div>
     </div>
 
+    <!-- STEP 5: CAMERA -->
     <div id="screen-CAMERA" class="screen">
         <div id="camera-flash" class="absolute inset-0 z-50 pointer-events-none hidden bg-white"></div>
         <div class="toy-window bg-gray-900 border-none rounded-none" style="height: 54vh; padding-bottom: 0;">
@@ -289,6 +306,7 @@
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/><path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><circle cx="12" cy="12" r="3"/><path d="m18 22-3-3 3-3"/><path d="m6 2 3 3-3 3"/></svg>
                 </button>
                 
+                <!-- Make viewport clickable to shoot -->
                 <div class="relative w-full max-w-[260px] bg-black border-2 border-gray-700 rounded-lg overflow-hidden shadow-lg cursor-pointer" id="camera-viewport" onclick="startShootingSequence()">
                     <video id="camera-video" autoplay playsinline muted class="absolute w-full h-full object-cover"></video>
                     
@@ -297,6 +315,7 @@
                         <span id="shot-counter-text" class="text-[9px] font-black text-white drop-shadow-md bg-pink-500/90 px-2 py-0.5 rounded-full">SHOT 1/4</span>
                     </div>
                     
+                    <!-- Tap to shoot overlay hint -->
                     <div id="tap-to-shoot-hint" class="absolute inset-0 flex items-center justify-center z-10 pointer-events-none opacity-60">
                         <div class="bg-black/40 backdrop-blur-sm px-4 py-2 rounded-full border border-white/30 text-white font-black text-[10px] animate-pulse">
                             👆 TAP TO SHOOT 👆
@@ -310,12 +329,14 @@
                 
                 <div class="mt-3 flex space-x-1.5" id="shot-progress-dots"></div>
                 
+                <!-- Fallback OK button -->
                 <button id="capture-btn" class="toy-action-btn mt-3 py-1.5 px-6" onclick="startShootingSequence()">OK</button>
             </div>
         </div>
         <div class="toy-hidden-area"></div>
     </div>
 
+    <!-- STEP 6: REVIEW & ADJUST -->
     <div id="screen-REVIEW" class="screen">
         <div class="toy-window" style="background-color: var(--pastel-mint);">
             <button class="back-btn" onclick="goBack('REVIEW')">◀</button>
@@ -341,6 +362,7 @@
         <div class="toy-hidden-area"></div>
     </div>
 
+    <!-- STEP 7: RESULT -->
     <div id="screen-RESULT" class="screen">
         <div class="toy-window bg-white">
             <div class="pt-4 px-4 text-center shrink-0">
@@ -380,8 +402,18 @@
 
 <script>
 // ==========================================
-// TINKLE PHOTO CLUB v8.1 (Added 'No Bad' Frame)
+// TINKLE PHOTO CLUB v8.2 (Stability Fixes)
+// [FIX] Removed unreliable Cache API for images to ensure Review screen always renders.
+// [FIX] Fixed crossOrigin="anonymous" issue on Base64 image printing to fix "Finish" button.
+// [FIX] Replaced system alerts with clean custom modals.
 // ==========================================
+
+function showAlert(msg) {
+    const modal = document.getElementById('custom-alert');
+    document.getElementById('custom-alert-msg').innerText = msg;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
 
 const MASTER_CANVAS = {
     PORTRAIT: { w: 1200, h: 1800 },
@@ -561,57 +593,19 @@ function playSfx(type) {
     }
 }
 
-// Offline Caching logic for images
-async function fetchAndCache(url) {
-    if (!window.caches) return url;
-    try {
-        const cache = await caches.open('tinkle-assets-v1');
-        let res = await cache.match(url);
-        if (!res) {
-            res = await fetch(url, { mode: 'cors' });
-            if (res.ok) cache.put(url, res.clone());
-        }
-        if (res) {
-            const blob = await res.blob();
-            return URL.createObjectURL(blob);
-        }
-    } catch (e) {
-        console.warn("Offline fetch fallback for:", url);
-    }
-    return url;
-}
-
-const loadImage = async (src) => {
-    return new Promise(async (res, rej) => {
+// Improved robust loadImage function that properly handles Data URIs vs HTTP URIs
+const loadImage = (src) => {
+    return new Promise((res, rej) => {
         const img = new Image();
-        img.crossOrigin = "anonymous";
+        // ONLY apply crossOrigin anonymous to actual HTTP URLs, not base64 data URIs!
+        if (src && src.startsWith('http')) {
+            img.crossOrigin = "anonymous";
+        }
         img.onload = () => res(img);
         img.onerror = () => rej(new Error('Failed to load: ' + src));
-        if (src && src.startsWith('http')) {
-            img.src = await fetchAndCache(src);
-        } else {
-            img.src = src;
-        }
+        img.src = src;
     });
 };
-
-async function preloadAssets() {
-    if (!window.caches) return;
-    const urls = [
-        ...FRAMES.map(f => f.mask).filter(Boolean),
-        ...FRAMES.map(f => f.overlay).filter(Boolean)
-    ];
-    try {
-        const cache = await caches.open('tinkle-assets-v1');
-        for (const url of urls) {
-            const match = await cache.match(url);
-            if(!match) {
-                const res = await fetch(url, {mode: 'cors'});
-                if(res.ok) cache.put(url, res);
-            }
-        }
-    } catch(e) { console.log("Preload skipped"); }
-}
 
 function filterAvailableFrames() {
     if (!currentLayout) return;
@@ -628,9 +622,6 @@ function init() {
     initPanEvents();
     renderFilters();
     updateSelectedFrameUI();
-    
-    // Start preloading images for offline use
-    preloadAssets();
 }
 
 function navigate(screenName) {
@@ -921,7 +912,7 @@ function updateReviewZoom(val) {
     }
 }
 
-async function updateCameraMask() {
+function updateCameraMask() {
     const vid = $('camera-video');
     if(!vid || !currentLayout) return;
 
@@ -936,14 +927,13 @@ async function updateCameraMask() {
         const sizeY = (master.h / slot.h) * 100;
         const pctX = (master.w === slot.w) ? 0 : (slot.x / (master.w - slot.w)) * 100;
         const pctY = (master.h === slot.h) ? 0 : (slot.y / (master.h - slot.h)) * 100;
-        
-        const cachedMaskUrl = await fetchAndCache(currentFrame.mask);
 
-        vid.style.WebkitMaskImage = `url('${cachedMaskUrl}')`;
+        // Apply raw URL directly to prevent hanging promises
+        vid.style.WebkitMaskImage = `url('${currentFrame.mask}')`;
         vid.style.WebkitMaskSize = `${sizeX}% ${sizeY}%`;
         vid.style.WebkitMaskPosition = `${pctX}% ${pctY}%`;
         vid.style.WebkitMaskRepeat = 'no-repeat';
-        vid.style.maskImage = `url('${cachedMaskUrl}')`;
+        vid.style.maskImage = `url('${currentFrame.mask}')`;
         vid.style.maskSize = `${sizeX}% ${sizeY}%`;
         vid.style.maskPosition = `${pctX}% ${pctY}%`;
         vid.style.maskRepeat = 'no-repeat';
@@ -974,7 +964,7 @@ async function startCamera() {
             await new Promise((resolve) => { if(vid.readyState >= 2) resolve(); else vid.onloadeddata = () => resolve(); });
             updateCameraMask();
         }
-    } catch(e) { console.error('Camera error:', e); alert("Please allow camera access 🥺"); }
+    } catch(e) { console.error('Camera error:', e); showAlert("Please allow camera access 🥺"); }
 }
 
 function stopCamera() { if(stream) { stream.getTracks().forEach(t => t.stop()); stream = null; } }
@@ -1062,7 +1052,7 @@ function captureSingleFrame() {
     }
 }
 
-async function renderReview() {
+function renderReview() {
     const c = $('review-grid-container'); if(!c) return;
     c.innerHTML = '';
     if(capturedPhotos.length === 0) { c.innerHTML = '<div class="col-span-2 text-center text-sm text-gray-500 py-8">No photos yet</div>'; return; }
@@ -1094,9 +1084,7 @@ async function renderReview() {
             const pctX = (master.w === slot.w) ? 0 : (slot.x / (master.w - slot.w)) * 100;
             const pctY = (master.h === slot.h) ? 0 : (slot.y / (master.h - slot.h)) * 100;
             
-            const cachedMaskUrl = await fetchAndCache(currentFrame.mask);
-
-            w.style.WebkitMaskImage = `url('${cachedMaskUrl}')`;
+            w.style.WebkitMaskImage = `url('${currentFrame.mask}')`;
             w.style.WebkitMaskSize = `${sizeX}% ${sizeY}%`;
             w.style.WebkitMaskPosition = `${pctX}% ${pctY}%`;
             w.style.WebkitMaskRepeat = 'no-repeat';
@@ -1249,7 +1237,11 @@ async function processFinalPrint() {
             });
         }
         
-    } catch(e) { console.error(e); alert("Oops! Something went wrong."); document.body.style.cursor = 'default'; }
+    } catch(e) { 
+        console.error(e); 
+        document.body.style.cursor = 'default';
+        showAlert("Oops! Something went wrong while saving."); 
+    }
 }
 
 async function generateAnimatedGif(images) {
@@ -1344,7 +1336,7 @@ async function shareFile(dataUrl, filename, mimeType) {
             throw new Error("Browser doesn't support direct file sharing");
         }
     } catch (err) {
-        alert("อุปกรณ์ของคุณไม่รองรับการแชร์โดยตรง ระบบจะทำการดาวน์โหลดให้แทนนะคะ 🥺");
+        showAlert("อุปกรณ์ของคุณไม่รองรับการแชร์โดยตรง ระบบจะทำการดาวน์โหลดให้แทนนะคะ 🥺");
         if(mimeType === 'image/gif') downloadGif();
         else downloadImage();
     }
