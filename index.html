@@ -361,7 +361,7 @@ overflow: hidden;
 // Master coordinate: 1200x1800 (portrait) | 1800x1200 (landscape)
 // ==========================================
 
-const SAFE_PADDING_SCALE = 0.86;
+const SAFE_PADDING_SCALE = 0.92; // safe breathing room inside mask
 
 function showAlert(msg) {
   const modal = document.getElementById('custom-alert');
@@ -712,47 +712,24 @@ async function startPreviewLoop() {
 
     const maskImg = previewMaskImages[slotIdx] || null;
 
-    // ── PIPELINE ────────────────────────────────────────────────────────────
-    // Layer A: solid black background (outside mask stays black)
+    // Capture current frame from video into an image-like canvas (handles mirror)
+    const vidCanvas = document.createElement('canvas');
+    vidCanvas.width  = vid.videoWidth  || 640;
+    vidCanvas.height = vid.videoHeight || 480;
+    const vCtx = vidCanvas.getContext('2d');
+    vCtx.save();
+    if (isFacingUser) { vCtx.translate(vidCanvas.width, 0); vCtx.scale(-1, 1); }
+    vCtx.drawImage(vid, 0, 0);
+    vCtx.restore();
+
+    // Use unified renderer — same pipeline as export
+    const transform = photoTransforms[slotIdx] || { zoom: 1, x: 0, y: 0 };
+    const rendered = renderSlotToCanvas(vidCanvas, maskImg, slot, transform, cW, cH, currentFilter.css);
+
+    // Black bg + rendered slot (transparent outside mask = black shows through)
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, cW, cH);
-
-    // Layer B: camera feed — draw onto isolated offscreen canvas first,
-    //          clip it hard with destination-in mask, then blit result.
-    //          This ensures ZERO camera pixels leak outside mask shape.
-    const camCanvas = document.createElement('canvas');
-    camCanvas.width = cW; camCanvas.height = cH;
-    const cCtx = camCanvas.getContext('2d');
-
-    // Cover-fit video into cW×cH — slot-local origin only
-    const vW = vid.videoWidth  || 640;
-    const vH = vid.videoHeight || 480;
-    const vRatio = vW / vH;
-    const cRatio = cW / cH;
-    let drawW, drawH;
-    if (vRatio > cRatio) { drawH = cH; drawW = drawH * vRatio; }
-    else                  { drawW = cW; drawH = drawW / vRatio; }
-    const drawX = (cW - drawW) / 2;
-    const drawY = (cH - drawH) / 2;
-
-    cCtx.save();
-    if (isFacingUser) { cCtx.translate(cW, 0); cCtx.scale(-1, 1); }
-    if (currentFilter.css !== 'none') cCtx.filter = currentFilter.css;
-    cCtx.drawImage(vid, drawX, drawY, drawW, drawH);
-    cCtx.restore();
-
-    // Hard clip camera to mask — destination-in removes ALL pixels outside mask.
-    // No feathering, no edge bleed, no partial alpha.
-    if (maskImg) {
-      cCtx.globalCompositeOperation = 'destination-in';
-      cCtx.drawImage(maskImg, 0, 0, cW, cH);
-      cCtx.globalCompositeOperation = 'source-over'; // reset
-    }
-
-    // Blit clipped camera onto black background using source-over.
-    // Transparent pixels in camCanvas reveal the black bg — clean hard edge.
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.drawImage(camCanvas, 0, 0);
+    ctx.drawImage(rendered, 0, 0);
 
     previewRAF = requestAnimationFrame(drawFrame);
   }
@@ -927,45 +904,37 @@ function captureSingleFrame() {
 function updateReviewZoom(val) {
   if (!photoTransforms[activePhotoIndex]) return;
   photoTransforms[activePhotoIndex].zoom = parseFloat(val);
-  const img = $(`review-img-${activePhotoIndex}`);
-  if (img) {
-    const t = photoTransforms[activePhotoIndex];
-    img.style.transform = `translate(${t.x}px, ${t.y}px) scale(${t.zoom})`;
-  }
+  // Redraw review canvas for active slot
+  const slot = dynamicSlots ? (dynamicSlots[activePhotoIndex] || dynamicSlots[0]) : null;
+  if (!slot || !reviewCanvases[activePhotoIndex]) return;
+  const displayPhotos = currentLayout.type === 'multiprint' ? [capturedPhotos[0]] : capturedPhotos;
+  const raw = displayPhotos[activePhotoIndex];
+  if (!raw) return;
+  loadImage(raw).then(img => {
+    // Get mask image from cache (load from slot data)
+    const tm = slot.trueAlphaMask;
+    const getMask = tm ? loadImage(tm) : Promise.resolve(null);
+    getMask.then(maskImg => {
+      drawReviewCanvas(activePhotoIndex, img, slot, maskImg);
+    });
+  });
 }
 
 function initPanEvents() {
-  document.addEventListener('pointerdown', (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
-    const container = e.target.closest('.review-photo-container');
-    if (container) {
-      const idx = parseInt(container.dataset.idx);
-      activePhotoIndex = idx; renderReview();
-      isDragging = true; startX = e.clientX; startY = e.clientY;
-      currentX = photoTransforms[idx].x; currentY = photoTransforms[idx].y;
-      try { container.setPointerCapture(e.pointerId); } catch(err) {}
-      e.preventDefault();
-    }
-  });
-  document.addEventListener('pointermove', (e) => {
-    if (!isDragging) return;
-    photoTransforms[activePhotoIndex].x = currentX + (e.clientX - startX);
-    photoTransforms[activePhotoIndex].y = currentY + (e.clientY - startY);
-    const img = $(`review-img-${activePhotoIndex}`);
-    if (img) {
-      const t = photoTransforms[activePhotoIndex];
-      img.style.transform = `translate(${t.x}px, ${t.y}px) scale(${t.zoom})`;
-    }
-  });
-  document.addEventListener('pointerup',     () => { isDragging = false; });
-  document.addEventListener('pointercancel', () => { isDragging = false; });
+  // Pan/drag is now handled per-slot inside initReviewDragAndPinch()
+  // called from renderReview() after canvases are created.
 }
+
+// Review canvas cache: idx → HTMLCanvasElement
+const reviewCanvases = {};
 
 async function renderReview() {
   const c = $('review-grid-container'); if (!c) return;
   c.innerHTML = '';
-  if (capturedPhotos.length === 0) { c.innerHTML = '<div class="col-span-2 text-center text-sm text-gray-500 py-8">No photos yet</div>'; return; }
-
+  if (capturedPhotos.length === 0) {
+    c.innerHTML = '<div class="col-span-2 text-center text-sm text-gray-500 py-8">No photos yet</div>';
+    return;
+  }
   if (!dynamicSlots) dynamicSlots = await calculateDynamicSlots(currentFrame, currentLayout);
 
   const displayPhotos = currentLayout.type === 'multiprint' ? [capturedPhotos[0]] : capturedPhotos;
@@ -973,45 +942,171 @@ async function renderReview() {
     ? 'flex flex-col items-center justify-center w-full'
     : 'grid grid-cols-2 gap-4 w-full';
 
+  // Pre-load mask images for review canvases
+  const reviewMaskImgs = [];
+  for (let i = 0; i < dynamicSlots.length; i++) {
+    const tm = dynamicSlots[i].trueAlphaMask;
+    if (tm) { try { reviewMaskImgs.push(await loadImage(tm)); } catch(e) { reviewMaskImgs.push(null); } }
+    else reviewMaskImgs.push(null);
+  }
+
   for (let idx = 0; idx < displayPhotos.length; idx++) {
     const raw  = displayPhotos[idx];
     const slot = dynamicSlots[idx] || dynamicSlots[0];
     const ratio = slot.shapeBounds.w / slot.shapeBounds.h;
     if (!photoTransforms[idx]) photoTransforms[idx] = {zoom:1, x:0, y:0};
-    const t = photoTransforms[idx];
     const isActive = idx === activePhotoIndex;
 
-    const w = document.createElement('div');
-    w.dataset.idx = idx;
-    w.className = `review-photo-container shadow-md cursor-move touch-none transition-all ${isActive ? 'scale-[1.02] z-10' : ''} ${displayPhotos.length === 1 ? 'w-[240px] max-w-full' : 'w-full'}`;
-    w.style.boxShadow = isActive ? '0 0 0 4px #ff4d9a' : '0 0 0 4px white';
-    w.style.aspectRatio = `${ratio}`;
+    const wrapper = document.createElement('div');
+    wrapper.className = `relative shadow-md transition-all ${isActive ? 'scale-[1.02] z-10' : ''} ${displayPhotos.length === 1 ? 'w-[240px] max-w-full' : 'w-full'}`;
+    wrapper.style.aspectRatio = `${ratio}`;
+    wrapper.style.boxShadow = isActive ? '0 0 0 4px #ff4d9a, 0 4px 20px rgba(255,77,154,0.3)' : '0 0 0 3px #f2ede9';
+    wrapper.style.borderRadius = '8px';
+    wrapper.style.overflow = 'hidden';
+    wrapper.style.cursor = 'move';
 
-    // CSS mask from trueAlphaMask — clips preview to shape
-    if (slot.trueAlphaMask) {
-      w.style.WebkitMaskImage = `url('${slot.trueAlphaMask}')`;
-      w.style.WebkitMaskSize  = '100% 100%';
-      w.style.WebkitMaskPosition = 'center';
-      w.style.WebkitMaskRepeat = 'no-repeat';
-      w.style.maskImage    = `url('${slot.trueAlphaMask}')`;
-      w.style.maskSize     = '100% 100%';
-      w.style.maskPosition = 'center';
-      w.style.maskRepeat   = 'no-repeat';
-    }
+    // Canvas for this slot — renders using unified pipeline
+    const cnv = document.createElement('canvas');
+    cnv.style.width = '100%'; cnv.style.height = '100%';
+    cnv.style.display = 'block';
+    cnv.dataset.idx = idx;
+    reviewCanvases[idx] = cnv;
+    wrapper.appendChild(cnv);
 
-    w.innerHTML = `
-      <div class="absolute inset-0 flex items-center justify-center pointer-events-none" style="width:100%;height:100%;">
-        <img id="review-img-${idx}" src="${raw}" style="filter:${currentFilter.css}; transform: translate(${t.x}px, ${t.y}px) scale(${t.zoom}); pointer-events:none; transform-origin:center;" class="absolute w-[86%] h-[86%] object-cover" alt="Photo ${idx+1}"/>
-      </div>
-      <div class="absolute bottom-0 w-full bg-gradient-to-t from-black/60 to-transparent flex items-end justify-center pb-2 pt-6 z-20 pointer-events-none">
-        <button onclick="triggerRetake(${idx})" class="bg-white/90 backdrop-blur text-pink-500 text-[10px] px-4 py-1.5 rounded-full shadow-lg font-black border-2 border-pink-200 pointer-events-auto active:scale-95 transition-transform flex items-center gap-1 uppercase tracking-wider">RETAKE 🔁</button>
-      </div>
-    `;
-    c.appendChild(w);
+    // Retake button overlay
+    const retakeDiv = document.createElement('div');
+    retakeDiv.className = 'absolute bottom-0 left-0 w-full flex justify-center pb-2 pt-6 z-20 pointer-events-none';
+    retakeDiv.style.background = 'linear-gradient(to top, rgba(0,0,0,0.5), transparent)';
+    retakeDiv.innerHTML = `<button onclick="triggerRetake(${idx})" class="bg-white/90 backdrop-blur text-pink-500 text-[10px] px-4 py-1.5 rounded-full shadow-lg font-black border-2 border-pink-200 pointer-events-auto active:scale-95 transition-transform uppercase tracking-wider">RETAKE 🔁</button>`;
+    wrapper.appendChild(retakeDiv);
+
+    // Activate slot on tap
+    wrapper.addEventListener('pointerdown', (e) => {
+      if (e.target.tagName === 'BUTTON') return;
+      activePhotoIndex = idx;
+      // Update active ring on all wrappers
+      c.querySelectorAll('[data-slot-wrapper]').forEach((w, wi) => {
+        w.style.boxShadow = wi === idx
+          ? '0 0 0 4px #ff4d9a, 0 4px 20px rgba(255,77,154,0.3)'
+          : '0 0 0 3px #f2ede9';
+      });
+      const zs = $('review-zoom-slider');
+      if (zs) zs.value = photoTransforms[idx]?.zoom || 1;
+    });
+    wrapper.dataset.slotWrapper = idx;
+    wrapper.setAttribute('data-slot-wrapper', idx);
+
+    c.appendChild(wrapper);
+
+    // Draw initial canvas render
+    const img = await loadImage(raw);
+    await drawReviewCanvas(idx, img, slot, reviewMaskImgs[idx] || reviewMaskImgs[0]);
   }
 
   const zs = $('review-zoom-slider');
   if (zs) zs.value = photoTransforms[activePhotoIndex]?.zoom || 1;
+  initReviewDragAndPinch(displayPhotos, dynamicSlots, reviewMaskImgs);
+}
+
+// Draw a single review slot canvas using unified renderer
+async function drawReviewCanvas(idx, imgOrSrc, slot, maskImg) {
+  const cnv = reviewCanvases[idx]; if (!cnv) return;
+  const wrapper = cnv.parentElement; if (!wrapper) return;
+  const dW = wrapper.clientWidth  || slot.shapeBounds.w;
+  const dH = wrapper.clientHeight || slot.shapeBounds.h;
+  cnv.width  = dW; cnv.height = dH;
+
+  let img = imgOrSrc;
+  if (typeof imgOrSrc === 'string') img = await loadImage(imgOrSrc);
+
+  const transform = photoTransforms[idx] || {zoom:1, x:0, y:0};
+  const rendered  = renderSlotToCanvas(img, maskImg, slot, transform, dW, dH, currentFilter.css);
+
+  const ctx = cnv.getContext('2d');
+  ctx.clearRect(0, 0, dW, dH);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, dW, dH);
+  ctx.drawImage(rendered, 0, 0);
+}
+
+// Per-slot drag + pinch gesture handling on review canvases
+function initReviewDragAndPinch(displayPhotos, slots, maskImgs) {
+  let dragActive = false, pinchActive = false;
+  let lastX = 0, lastY = 0;
+  let lastPinchDist = 0;
+  let activeIdx = 0;
+  let activeImg = null;
+  const imgCache = {};
+
+  async function getImg(idx) {
+    if (!imgCache[idx]) imgCache[idx] = await loadImage(displayPhotos[idx]);
+    return imgCache[idx];
+  }
+
+  async function redraw(idx) {
+    const slot    = slots[idx] || slots[0];
+    const maskImg = maskImgs[idx] || maskImgs[0];
+    const img     = await getImg(idx);
+    await drawReviewCanvas(idx, img, slot, maskImg);
+  }
+
+  document.querySelectorAll('[data-slot-wrapper]').forEach(wrapper => {
+    const idx = parseInt(wrapper.dataset.slotWrapper);
+
+    // ── DRAG ──
+    wrapper.addEventListener('pointerdown', async (e) => {
+      if (e.target.tagName === 'BUTTON') return;
+      activeIdx = idx;
+      dragActive = true;
+      lastX = e.clientX; lastY = e.clientY;
+      wrapper.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    }, {passive: false});
+
+    wrapper.addEventListener('pointermove', async (e) => {
+      if (!dragActive || activeIdx !== idx) return;
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      lastX = e.clientX; lastY = e.clientY;
+      if (!photoTransforms[idx]) photoTransforms[idx] = {zoom:1, x:0, y:0};
+      photoTransforms[idx].x += dx;
+      photoTransforms[idx].y += dy;
+      await redraw(idx);
+    }, {passive: true});
+
+    wrapper.addEventListener('pointerup',     () => { dragActive = false; });
+    wrapper.addEventListener('pointercancel', () => { dragActive = false; });
+
+    // ── PINCH ZOOM ──
+    let touches = [];
+    wrapper.addEventListener('touchstart', (e) => {
+      touches = Array.from(e.touches);
+      if (touches.length === 2) {
+        pinchActive = true;
+        lastPinchDist = Math.hypot(
+          touches[0].clientX - touches[1].clientX,
+          touches[0].clientY - touches[1].clientY
+        );
+      }
+    }, {passive: true});
+
+    wrapper.addEventListener('touchmove', async (e) => {
+      if (!pinchActive || e.touches.length < 2) return;
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const delta = dist / lastPinchDist;
+      lastPinchDist = dist;
+      if (!photoTransforms[idx]) photoTransforms[idx] = {zoom:1, x:0, y:0};
+      photoTransforms[idx].zoom = Math.max(0.5, Math.min(4, photoTransforms[idx].zoom * delta));
+      const zs = $('review-zoom-slider');
+      if (zs && activePhotoIndex === idx) zs.value = photoTransforms[idx].zoom;
+      await redraw(idx);
+    }, {passive: true});
+
+    wrapper.addEventListener('touchend', () => { pinchActive = false; touches = []; });
+  });
 }
 
 function triggerRetake(index) { retakeTargetIndex = index; navigate('CAMERA'); }
@@ -1022,6 +1117,47 @@ function triggerRetake(index) { retakeTargetIndex = index; navigate('CAMERA'); }
 // 2. Per-slot: camera → destination-in mask → composite
 // 3. Overlay frame PNG on top
 // ==========================================
+// ============================================================
+// UNIFIED SLOT RENDERER — used by BOTH preview and export
+// Returns a canvas (outW x outH) with:
+//   - camera/photo cover-fitted into safe area
+//   - hard-clipped to trueAlphaMask via destination-in
+//   - user transform (scale/offsetX/offsetY) applied
+//   - fully transparent outside mask shape
+// ============================================================
+function renderSlotToCanvas(img, maskImg, slot, transform, outW, outH, filterCss) {
+  const sc = document.createElement('canvas');
+  sc.width = outW; sc.height = outH;
+  const ctx = sc.getContext('2d');
+
+  // Cover-fit image into safe area (SAFE_PADDING_SCALE of outW x outH)
+  const safeW = outW * SAFE_PADDING_SCALE;
+  const safeH = outH * SAFE_PADDING_SCALE;
+
+  const imgRatio = img.width / img.height;
+  const safeRatio = safeW / safeH;
+  let fitW, fitH;
+  if (imgRatio > safeRatio) { fitH = safeH; fitW = fitH * imgRatio; }
+  else                       { fitW = safeW; fitH = fitW / imgRatio; }
+
+  ctx.save();
+  ctx.translate(outW / 2 + (transform.x || 0), outH / 2 + (transform.y || 0));
+  ctx.scale(transform.zoom || 1, transform.zoom || 1);
+  if (filterCss && filterCss !== 'none') ctx.filter = filterCss;
+  ctx.drawImage(img, -fitW / 2, -fitH / 2, fitW, fitH);
+  ctx.restore();
+
+  // Hard clip to mask shape — destination-in removes all pixels outside mask
+  if (maskImg) {
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.drawImage(maskImg, 0, 0, outW, outH);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  return sc;
+}
+
+// Legacy compat shim (not used in new pipeline)
 function drawCoverFitImage(ctx, img, targetW, targetH, transform, uiScale) {
   const imgRatio = img.width / img.height;
   const tgtRatio = targetW / targetH;
@@ -1029,8 +1165,8 @@ function drawCoverFitImage(ctx, img, targetW, targetH, transform, uiScale) {
   if (imgRatio > tgtRatio) { h = targetH; w = h * imgRatio; }
   else { w = targetW; h = w / imgRatio; }
   ctx.save();
-  ctx.translate(transform.x * uiScale, transform.y * uiScale);
-  ctx.scale(transform.zoom, transform.zoom);
+  ctx.translate((transform.x || 0) * uiScale, (transform.y || 0) * uiScale);
+  ctx.scale(transform.zoom || 1, transform.zoom || 1);
   ctx.drawImage(img, -w/2, -h/2, w, h);
   ctx.restore();
 }
@@ -1070,59 +1206,30 @@ async function processFinalPrint() {
     photoCanvas.width = W; photoCanvas.height = H;
     const photoCtx = photoCanvas.getContext('2d');
 
-    // Render each slot INDEPENDENTLY — no state leaks
-    const renderSlot = (targetCtx, img, slot, transform) => {
-      // Isolated slot canvas exactly sized to shape bounds
-      const sc = document.createElement('canvas');
-      sc.width = slot.shapeBounds.w; sc.height = slot.shapeBounds.h;
-      const sctx = sc.getContext('2d');
-
-      // Center + scale photo to 86% of shape bounds
-      const renderW = slot.shapeBounds.w * SAFE_PADDING_SCALE;
-      const renderH = slot.shapeBounds.h * SAFE_PADDING_SCALE;
-
-      sctx.save();
-      sctx.beginPath(); // prevent path leaks
-      sctx.translate(slot.shapeBounds.w / 2, slot.shapeBounds.h / 2);
-      sctx.filter = currentFilter.css !== 'none' ? currentFilter.css : 'none';
-      const uiScale = slot.shapeBounds.w / previewWidth;
-      drawCoverFitImage(sctx, img, renderW, renderH, transform, uiScale);
-      sctx.restore();
-
-      // TRUE ALPHA MASK — destination-in compositing
-      // This is the ONLY clip method used. NEVER border-radius, NEVER ellipse.
-      if (slot.trueAlphaMask && clipMaskImgs[slot.trueAlphaMask]) {
-        sctx.save();
-        sctx.globalCompositeOperation = 'destination-in';
-        sctx.drawImage(clipMaskImgs[slot.trueAlphaMask], 0, 0, slot.shapeBounds.w, slot.shapeBounds.h);
-        sctx.globalCompositeOperation = 'source-over';
-        sctx.restore();
-      }
-
-      // Blit isolated slot onto the main photo canvas at correct position
-      targetCtx.save();
-      targetCtx.beginPath(); // prevent path leaks
-      targetCtx.drawImage(sc, slot.x + slot.shapeBounds.x, slot.y + slot.shapeBounds.y);
-      targetCtx.restore();
-    };
-
-    // Process all slots
+    // Process all slots using UNIFIED renderSlotToCanvas
+    // Exact same pipeline as live preview — no rectangular fallback
     currentLayout.slots.forEach((_, i) => {
       const imgIndex = currentLayout.type === 'multiprint' ? 0 : i;
       if (imgIndex >= imgs.length || !dynamicSlots || !dynamicSlots[i]) return;
 
       const slot      = dynamicSlots[i];
       const transform = photoTransforms[imgIndex] || {zoom:1, x:0, y:0};
+      const maskImg   = clipMaskImgs[slot.trueAlphaMask] || null;
+      const sW = slot.shapeBounds.w;
+      const sH = slot.shapeBounds.h;
 
-      // Left strip
-      photoCtx.save(); photoCtx.beginPath();
-      renderSlot(photoCtx, imgs[imgIndex], slot, transform);
+      // Render slot — same function as preview, just at master canvas resolution
+      const rendered = renderSlotToCanvas(imgs[imgIndex], maskImg, slot, transform, sW, sH, currentFilter.css);
+
+      // Blit at correct position in master canvas
+      photoCtx.save();
+      photoCtx.drawImage(rendered, slot.x + slot.shapeBounds.x, slot.y + slot.shapeBounds.y);
       photoCtx.restore();
 
-      // Right strip (twin-strip layouts only)
+      // Mirror to right strip (twin-strip layouts)
       if (currentLayout.type === 'twin-strip') {
-        photoCtx.save(); photoCtx.beginPath();
-        renderSlot(photoCtx, imgs[imgIndex], { ...slot, x: slot.x + (W / 2) }, transform);
+        photoCtx.save();
+        photoCtx.drawImage(rendered, slot.x + slot.shapeBounds.x + (W / 2), slot.y + slot.shapeBounds.y);
         photoCtx.restore();
       }
     });
