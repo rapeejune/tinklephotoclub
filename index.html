@@ -25,6 +25,9 @@ link.rel = 'manifest'; link.href = manifestURL;
 document.head.appendChild(link);
 </script>
 
+<!-- 🪄 เพิ่มไลบรารี MediaPipe AI Selfie Segmentation -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js" crossorigin="anonymous"></script>
+
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gifshot/0.3.2/gifshot.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Varela+Round&family=M+PLUS+Rounded+1c:wght@700&display=swap" rel="stylesheet">
@@ -75,12 +78,12 @@ position: relative; z-index: 10;
 /* 🎯 ปรับแต่งปุ่ม OK ให้ใหญ่ขึ้น */
 .toy-action-btn {
 background: linear-gradient(145deg, #ff4d9a, #ff2a85);
-border: 6px solid #ffffff; /* ขอบหนาขึ้น */
+border: 6px solid #ffffff; 
 border-radius: 99px;
 box-shadow: 0 6px 15px rgba(255,42,133,0.4);
 color: white; font-weight: 900; 
-font-size: 24px; /* อักษรใหญ่ขึ้น */
-padding: 12px 48px; /* ปุ่มอ้วนและกว้างขึ้น */
+font-size: 24px; 
+padding: 12px 48px; 
 letter-spacing: 1.5px;
 transition: transform 0.1s; cursor: pointer;
 }
@@ -89,12 +92,12 @@ transition: transform 0.1s; cursor: pointer;
 /* 🎯 ปรับแต่งปุ่มย้อนกลับให้ใหญ่และกดง่ายขึ้น */
 .back-btn {
 position: absolute; top: 12px; left: 12px; z-index: 50;
-width: 50px; height: 50px; /* ขนาดวงกลมใหญ่ขึ้น */
+width: 50px; height: 50px; 
 background-color: rgba(255,255,255,0.9);
 backdrop-filter: blur(4px); border-radius: 50%;
 display: flex; align-items: center; justify-content: center;
 color: #ff4d9a; font-size: 22px; font-weight: 900; 
-border: 4px solid #ffdae0; /* ขอบหนาขึ้น */
+border: 4px solid #ffdae0; 
 box-shadow: 0 4px 8px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.1s;
 }
 .back-btn:active { transform: scale(0.9); }
@@ -123,7 +126,7 @@ position: relative;
 overflow: hidden;
 background: transparent;
 border: 3px solid #444;
-border-radius: 4px;
+border-radius: 16px; /* 🎀 ปรับขอบจอกล้องให้มนน่ารักขึ้น */
 width: 100%;
 }
 #preview-canvas {
@@ -138,6 +141,8 @@ display: none;
 position: relative;
 background-color: transparent;
 transform: translateZ(0);
+border-radius: 16px; /* 🎀 ปรับขอบรูปในหน้าจัดรูปให้มน */
+overflow: hidden;    /* 🎀 บังคับไม่ให้รูปทะลุขอบมน */
 }
 
 /* Screensaver Overlay */
@@ -223,7 +228,6 @@ transform: translateZ(0);
 <p class="header-subtitle text-pink-500" id="layout-mode-desc">ปัดซ้ายขวา และแตะที่รูปเพื่อเลือก</p>
 </div>
 <div class="flex-1 flex flex-col items-center justify-center relative px-2 w-full mt-2">
-<!-- 🎯 ขยายปุ่มลูกศร ◀ ▶ ซ้ายขวาให้ใหญ่ขึ้น -->
 <button onclick="prevLayout()" class="absolute left-2 z-20 w-14 h-14 bg-white/90 rounded-full shadow-md text-pink-500 font-black text-2xl border-4 border-pink-100 flex items-center justify-center active:scale-95">◀</button>
 <div id="carousel-layout-card" onclick="confirmLayout()" class="clickable-card bg-[#fff0f5] border-[4px] border-[#ff4d9a] rounded-3xl p-5 shadow-sm flex flex-col items-center justify-center text-center w-[200px] z-10">
 <div id="carousel-icon" class="w-16 h-16 mb-3 text-[#ff4d9a]"></div>
@@ -284,21 +288,23 @@ transform: translateZ(0);
 <!-- STEP 5: CAMERA -->
 <div id="screen-CAMERA" class="screen">
 <div id="camera-flash" class="absolute inset-0 z-50 pointer-events-none hidden bg-white"></div>
+<!-- 🎀 คืนค่าความสูงเป็น 54vh เท่าเดิม -->
 <div class="toy-window bg-gray-900 border-none rounded-none" style="height: 54vh; padding-bottom: 0;">
 <button class="back-btn back-btn-dark" onclick="goBack('CAMERA')">◀</button>
 
 <div class="flex-1 flex flex-col items-center justify-center relative w-full overflow-hidden px-4">
-<!-- ⏳ ปุ่มเลือกเวลานับถอยหลัง (Timer Options) ย้ายมาตรงกลาง -->
-<button id="timer-toggle-btn" onclick="toggleTimer()" class="absolute top-3 left-1/2 -translate-x-1/2 z-20 h-12 px-4 bg-black/40 backdrop-blur rounded-full flex items-center justify-center text-white active:scale-95 border-2 border-white/20 font-black text-[15px] shadow-md">
+<!-- ⏳ ปุ่มเลือกเวลานับถอยหลัง (Timer Options) -->
+<button id="timer-toggle-btn" onclick="toggleTimer()" class="absolute top-3 left-1/2 -translate-x-1/2 z-20 h-10 px-4 bg-black/40 backdrop-blur rounded-full flex items-center justify-center text-white active:scale-95 border border-white/20 font-black text-[13px] shadow-md">
   ⏱️ 5S
 </button>
 
-<!-- 🎯 ขยายปุ่มสลับกล้องให้ใหญ่ขึ้น -->
-<button onclick="toggleCamera()" class="absolute top-3 right-3 z-20 w-12 h-12 bg-black/40 backdrop-blur rounded-full flex items-center justify-center text-white active:scale-95 border-2 border-white/20 shadow-md">
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/><path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><circle cx="12" cy="12" r="3"/><path d="m18 22-3-3 3-3"/><path d="m6 2 3 3-3 3"/></svg>
+<!-- 🎯 ปุ่มสลับกล้อง -->
+<button onclick="toggleCamera()" class="absolute top-3 right-3 z-20 w-10 h-10 bg-black/40 backdrop-blur rounded-full flex items-center justify-center text-white active:scale-95 border border-white/20 shadow-md">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/><path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><circle cx="12" cy="12" r="3"/><path d="m18 22-3-3 3-3"/><path d="m6 2 3 3-3 3"/></svg>
 </button>
 
-<div id="camera-viewport-container" class="w-full max-w-[260px] flex justify-center items-center relative mt-6" onclick="startShootingSequence()">
+<!-- 🎀 คืนค่าความกว้างกล้องให้พอดี 54vh -->
+<div id="camera-viewport-container" class="w-full max-w-[240px] flex justify-center items-center relative mt-8" onclick="startShootingSequence()">
 <div id="camera-viewport">
 <video id="camera-video" autoplay playsinline muted></video>
 <canvas id="preview-canvas" class="block w-full h-full object-contain"></canvas>
@@ -308,18 +314,23 @@ transform: translateZ(0);
 <span id="shot-counter-text" class="text-[10px] font-black text-white drop-shadow-md bg-pink-500/90 px-3 py-1 rounded-full">SHOT 1/4</span>
 </div>
 
+<!-- 🪄 ปุ่มลบฉากหลังแบบมีลวดลาย (AI Background) -->
+<button id="bg-toggle-btn" onclick="event.stopPropagation(); toggleBgRemoval();" class="absolute bottom-2 right-2 z-40 h-8 px-2 bg-black/50 backdrop-blur rounded-full flex items-center justify-center text-white active:scale-95 border border-white/30 font-black text-[10px] shadow-md transition-colors pointer-events-auto">
+  🪄 BG: OFF
+</button>
+
 <div id="tap-to-shoot-hint" class="absolute inset-0 flex items-center justify-center z-20 pointer-events-none opacity-60">
-<div class="bg-black/50 backdrop-blur-sm px-5 py-3 rounded-full border-2 border-white/40 text-white font-black text-[14px] animate-pulse">👆 TAP TO SHOOT 👆</div>
+<div class="bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full border border-white/40 text-white font-black text-[12px] animate-pulse">👆 TAP TO SHOOT 👆</div>
 </div>
 
 <div id="countdown-display" class="absolute inset-0 flex items-center justify-center z-30 hidden pointer-events-none">
-<span id="countdown-text" class="text-[120px] font-black text-white drop-shadow-[0_4px_20px_rgba(255,20,147,0.8)]" style="text-shadow: 0 4px 0 #FF1493;">5</span>
+<span id="countdown-text" class="text-[100px] font-black text-white drop-shadow-[0_4px_20px_rgba(255,20,147,0.8)]" style="text-shadow: 0 4px 0 #FF1493;">5</span>
 </div>
 </div>
 </div>
 
 <div class="mt-3 flex space-x-1.5" id="shot-progress-dots"></div>
-<button id="capture-btn" class="toy-action-btn mt-4 mb-2" onclick="startShootingSequence()">OK</button>
+<button id="capture-btn" class="toy-action-btn !py-2 !px-8 !text-xl mt-3 mb-2" onclick="startShootingSequence()">OK</button>
 </div>
 </div>
 <div class="toy-hidden-area"></div>
@@ -327,71 +338,71 @@ transform: translateZ(0);
 
 <!-- STEP 6: REVIEW & ADJUST -->
 <div id="screen-REVIEW" class="screen">
-<div class="toy-window" style="background-color: var(--pastel-mint);">
+<!-- 🎀 คืนค่าความสูงหน้าจัดรูปเป็น 54vh -->
+<div class="toy-window" style="background-color: var(--pastel-mint); height: 54vh;">
 <button class="back-btn" onclick="goBack('REVIEW')">◀</button>
 <div class="pt-4 px-4 text-center shrink-0">
 <h2 class="header-title"><span class="text-yellow-400 text-2xl mr-2">⭐5</span> Adjust Photos</h2>
 <p class="header-subtitle mt-0.5 text-pink-500" id="review-instruction">แตะเพื่อซูมและเลื่อนจัดพิกัด</p>
 </div>
 <div class="flex-1 overflow-y-auto p-2 w-full no-scrollbar flex flex-col items-center justify-center">
-<div class="grid gap-2 w-full max-w-[240px]" id="review-grid-container"></div>
-<div class="mt-3 mb-1 mx-auto w-full max-w-[220px] flex items-center justify-between gap-3 px-3 py-1.5 bg-white/80 backdrop-blur-md rounded-full border border-gray-200 shadow-sm shrink-0">
+<!-- 🎀 คืนขนาดตารางพรีวิว -->
+<div class="grid gap-2 w-full max-w-[220px]" id="review-grid-container"></div>
+<div class="mt-3 mb-1 mx-auto w-full max-w-[200px] flex items-center justify-between gap-3 px-3 py-1.5 bg-white/80 backdrop-blur-md rounded-full border border-gray-200 shadow-sm shrink-0">
 <span class="text-gray-500 text-xs font-bold drop-shadow-sm">➖</span>
 <input type="range" id="review-zoom-slider" min="1" max="3" step="0.05" value="1" class="w-full accent-[#ff4d9a] cursor-pointer" oninput="updateReviewZoom(this.value)">
 <span class="text-gray-500 text-xs font-bold drop-shadow-sm">➕</span>
 </div>
 </div>
-<div class="flex justify-center shrink-0 pt-3 border-t border-gray-100 mt-auto">
-<button class="toy-action-btn" onclick="processFinalPrint()">FINISH</button>
+<div class="flex justify-center shrink-0 pt-2 pb-1 border-t border-gray-100 mt-auto">
+<button class="toy-action-btn !py-2 !px-8 !text-xl" onclick="processFinalPrint()">FINISH</button>
 </div>
 </div>
 <div class="toy-hidden-area"></div>
 </div>
 
-<!-- STEP 7: RESULT -->
+<!-- 🖨️ STEP 7: RESULT (บีบกลับมาอยู่ในครึ่งบน) -->
 <div id="screen-RESULT" class="screen">
-<div class="toy-window bg-white">
-<div class="pt-4 px-4 text-center shrink-0">
-<h2 class="header-title"><span class="text-yellow-400 text-2xl mr-2">⭐6</span> Ready to Print!</h2>
-</div>
-<div class="flex-1 w-full flex items-center justify-center p-2 min-h-0 overflow-hidden relative">
-<img id="final-image" src="" class="max-w-[80%] max-h-full shadow-md border-2 border-gray-200 object-contain fade-in rounded-sm" />
-</div>
-<div class="shrink-0 w-full px-6 flex flex-col gap-3 mt-auto pb-4 border-t border-gray-100 pt-4">
-<!-- 🎯 ขยายปุ่ม Download/Share ให้ใหญ่ขึ้น -->
-<div class="flex gap-3 w-full">
-<button class="flex-1 bg-gray-100 text-[#6e6367] font-black py-3 rounded-2xl shadow-sm active:scale-95 flex items-center justify-center gap-2 border-2 border-gray-200" onclick="downloadImage()">
-<span class="text-2xl">📥</span><span class="text-[12px]">SAVE JPG</span>
-</button>
-<button class="flex-1 bg-[#4db8ff] text-white font-black py-3 rounded-2xl shadow-sm active:scale-95 flex items-center justify-center gap-2 border-2 border-blue-400" onclick="shareFile(finalComposedUrl, 'tinkle_photo.jpg', 'image/jpeg')">
-<span class="text-2xl">📤</span><span class="text-[12px]">SHARE</span>
-</button>
-</div>
-<div id="gif-controls" class="flex gap-3 w-full hidden opacity-0 transition-opacity duration-500">
-<button class="flex-1 bg-[#ffdae0] text-[#ff2a85] font-black py-3 rounded-2xl shadow-sm active:scale-95 flex items-center justify-center gap-2 border-2 border-pink-200" onclick="downloadGif()">
-<span class="text-2xl">🎬</span><span class="text-[12px]">SAVE GIF</span>
-</button>
-<button class="flex-1 bg-[#ff4d9a] text-white font-black py-3 rounded-2xl shadow-sm active:scale-95 flex items-center justify-center gap-2 border-2 border-pink-500" onclick="shareFile(finalGifUrl, 'tinkle_anim.gif', 'image/gif')">
-<span class="text-2xl">🚀</span><span class="text-[12px]">SHARE GIF</span>
-</button>
-</div>
-<!-- 🎯 เปลี่ยนปุ่ม RESTART จากตัวหนังสือเล็กๆ เป็นปุ่มขนาดใหญ่เห็นชัดเจน -->
-<button onclick="resetApp()" class="mt-2 w-full bg-gray-100 text-[#6e6367] font-black text-[16px] py-4 rounded-2xl uppercase tracking-wider active:scale-95 border-2 border-gray-200 shadow-sm flex items-center justify-center gap-2">
-RESTART <span class="text-2xl">🏠</span>
-</button>
-</div>
-</div>
-<div class="toy-hidden-area"></div>
+  <div class="toy-window bg-white" style="height: 54vh;">
+    <div class="pt-3 px-4 text-center shrink-0">
+      <h2 class="header-title"><span class="text-yellow-400 text-xl mr-2">⭐6</span> Ready to Print!</h2>
+    </div>
+    
+    <div class="flex-1 w-full flex items-center justify-center p-2 min-h-0 overflow-hidden relative">
+      <img id="final-image" src="" class="max-w-[80%] max-h-full shadow-md border-2 border-gray-200 object-contain fade-in rounded-[8px]" />
+    </div>
+    
+    <div class="shrink-0 w-full px-5 flex flex-col gap-2 mt-auto pb-2 border-t border-gray-100 pt-2">
+      <div class="flex gap-2 w-full">
+        <button class="flex-1 bg-gray-100 text-[#6e6367] font-black py-2 rounded-xl shadow-sm active:scale-95 flex items-center justify-center gap-1 border border-gray-200" onclick="downloadImage()">
+          <span class="text-lg">📥</span><span class="text-[10px]">SAVE JPG</span>
+        </button>
+        <button class="flex-1 bg-[#4db8ff] text-white font-black py-2 rounded-xl shadow-sm active:scale-95 flex items-center justify-center gap-1 border border-blue-400" onclick="shareFile(finalComposedUrl, 'tinkle_photo.jpg', 'image/jpeg')">
+          <span class="text-lg">📤</span><span class="text-[10px]">SHARE</span>
+        </button>
+      </div>
+      <div id="gif-controls" class="flex gap-2 w-full hidden opacity-0 transition-opacity duration-500">
+        <button class="flex-1 bg-[#ffdae0] text-[#ff2a85] font-black py-2 rounded-xl shadow-sm active:scale-95 flex items-center justify-center gap-1 border border-pink-200" onclick="downloadGif()">
+          <span class="text-lg">🎬</span><span class="text-[10px]">SAVE GIF</span>
+        </button>
+        <button class="flex-1 bg-[#ff4d9a] text-white font-black py-2 rounded-xl shadow-sm active:scale-95 flex items-center justify-center gap-1 border border-pink-500" onclick="shareFile(finalGifUrl, 'tinkle_anim.gif', 'image/gif')">
+          <span class="text-lg">🚀</span><span class="text-[10px]">SHARE GIF</span>
+        </button>
+      </div>
+      <button onclick="resetApp()" class="mt-1 w-full bg-gray-100 text-[#6e6367] font-black text-[12px] py-2 rounded-xl uppercase tracking-wider active:scale-95 border border-gray-200 shadow-sm flex items-center justify-center gap-2">
+        RESTART <span class="text-lg">🏠</span>
+      </button>
+    </div>
+  </div>
+  <div class="toy-hidden-area"></div>
 </div>
 
 </div>
 
 <script>
 // ==========================================
-// TINKLE PHOTO CLUB v42.0 — THE MASTER ARCHITECTURE
+// TINKLE PHOTO CLUB v46.0 — FIXED 54vh TOP-HALF Edition
 // One Single Render Function for Preview & Export.
-// True Mask Interpretation: Black = Camera, White/Transparent = Erase.
-// No Blob Runtime. Pure Strict Geometry.
 // ==========================================
 
 function showAlert(msg) {
@@ -400,73 +411,21 @@ document.getElementById('custom-alert-msg').innerText = msg;
 modal.classList.remove('hidden'); modal.classList.add('flex');
 }
 
-// 📌 1. Master Coordinate System (Source of Truth 100%)
+// 📌 1. Master Coordinate System
 const MASTER_CANVAS = {
 PORTRAIT: { w: 1200, h: 1800 },
 LANDSCAPE: { w: 1800, h: 1200 }
 };
 
 const LAYOUTS = [
-{
-id: 'classic_3cut', mode: 'multi', name: '2x6" 3 PHOTO', desc: 'Classic 3-Cut Strip', type: 'twin-strip',
-orientation: 'portrait', canvas: 'PORTRAIT', shots: 3,
-icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="14" y="6" width="12" height="8" rx="0.5"/><rect x="14" y="16" width="12" height="8" rx="0.5"/><rect x="14" y="26" width="12" height="8" rx="0.5"/></svg>`,
-slots: [ {x:0,y:0,w:600,h:600}, {x:0,y:600,w:600,h:600}, {x:0,y:1200,w:600,h:600} ]
-},
-{
-id: 'classic_4cut', mode: 'multi', name: '2x6" 4 PHOTO', desc: 'Classic 4-Cut Strip', type: 'twin-strip',
-orientation: 'portrait', canvas: 'PORTRAIT', shots: 4,
-icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="14" y="4" width="12" height="6" rx="0.5"/><rect x="14" y="12" width="12" height="6" rx="0.5"/><rect x="14" y="20" width="12" height="6" rx="0.5"/><rect x="14" y="28" width="12" height="6" rx="0.5"/></svg>`,
-slots: [ {x:0,y:0,w:600,h:450}, {x:0,y:450,w:600,h:450}, {x:0,y:900,w:600,h:450}, {x:0,y:1350,w:600,h:450} ]
-},
-{
-id: 'single_portrait', mode: 'multi', name: '4x6" PORTRAIT', desc: 'Single Portrait', type: 'full-sheet',
-orientation: 'portrait', canvas: 'PORTRAIT', shots: 1,
-icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="8" y="6" width="24" height="22" rx="0.5"/></svg>`,
-slots: [ {x:0,y:0,w:1200,h:1800} ]
-},
-{
-id: 'single_landscape', mode: 'multi', name: '4x6" LANDSCAPE', desc: 'Single Landscape', type: 'full-sheet',
-orientation: 'landscape', canvas: 'LANDSCAPE', shots: 1,
-icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="4" y="10" width="32" height="16" rx="0.5"/></svg>`,
-slots: [ {x:0,y:0,w:1800,h:1200} ]
-},
-{
-id: 'mini_4_sticker', mode: 'single', name: '4 MINI STICKERS', desc: 'Mini Sticker Sheet', type: 'multiprint',
-orientation: 'portrait', canvas: 'PORTRAIT', shots: 1,
-icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="8" y="8" width="10" height="10" rx="1"/><rect x="22" y="8" width="10" height="10" rx="1"/><rect x="8" y="22" width="10" height="10" rx="1"/><rect x="22" y="22" width="10" height="10" rx="1"/></svg>`,
-slots: [ {x:0,y:0,w:600,h:900}, {x:600,y:0,w:600,h:900}, {x:0,y:900,w:600,h:900}, {x:600,y:900,w:600,h:900} ]
-},
-{
-id: 'mix_6_sticker', mode: 'single', name: '6 MIX STICKERS', desc: 'Mixed Sizes Sheet', type: 'multiprint',
-orientation: 'portrait', canvas: 'PORTRAIT', shots: 1,
-icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="6" y="4" width="12" height="14" rx="1"/><rect x="22" y="4" width="12" height="14" rx="1"/><rect x="6" y="20" width="12" height="6" rx="1"/><rect x="22" y="20" width="12" height="6" rx="1"/><rect x="6" y="28" width="12" height="6" rx="1"/><rect x="22" y="28" width="12" height="6" rx="1"/></svg>`,
-slots: [
-  {x:0,y:0,w:600,h:900}, {x:600,y:0,w:600,h:900},
-  {x:0,y:900,w:600,h:450}, {x:600,y:900,w:600,h:450},
-  {x:0,y:1350,w:600,h:450}, {x:600,y:1350,w:600,h:450}
-]
-},
-{
-id: 'mix_8_sticker', mode: 'single', name: '8 MIX STICKERS', desc: 'Mixed Sizes Sheet', type: 'multiprint',
-orientation: 'portrait', canvas: 'PORTRAIT', shots: 1,
-icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="6" y="4" width="12" height="14" rx="1"/><rect x="22" y="4" width="12" height="14" rx="1"/><rect x="4" y="20" width="8" height="6" rx="1"/><rect x="16" y="20" width="8" height="6" rx="1"/><rect x="28" y="20" width="8" height="6" rx="1"/><rect x="4" y="28" width="8" height="6" rx="1"/><rect x="16" y="28" width="8" height="6" rx="1"/><rect x="28" y="28" width="8" height="6" rx="1"/></svg>`,
-slots: [
-  {x:0,y:0,w:600,h:900}, {x:600,y:0,w:600,h:900},
-  {x:0,y:900,w:400,h:450}, {x:400,y:900,w:400,h:450}, {x:800,y:900,w:400,h:450},
-  {x:0,y:1350,w:400,h:450}, {x:400,y:1350,w:400,h:450}, {x:800,y:1350,w:400,h:450}
-]
-},
-{
-id: 'grid_9_sticker', mode: 'single', name: '9 GRID STICKERS', desc: '3x3 Grid Sheet', type: 'multiprint',
-orientation: 'portrait', canvas: 'PORTRAIT', shots: 1,
-icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="6" y="4" width="8" height="8" rx="1"/><rect x="16" y="4" width="8" height="8" rx="1"/><rect x="26" y="4" width="8" height="8" rx="1"/><rect x="6" y="14" width="8" height="8" rx="1"/><rect x="16" y="14" width="8" height="8" rx="1"/><rect x="26" y="14" width="8" height="8" rx="1"/><rect x="6" y="24" width="8" height="8" rx="1"/><rect x="16" y="24" width="8" height="8" rx="1"/><rect x="26" y="24" width="8" height="8" rx="1"/></svg>`,
-slots: [
-  {x:0,y:0,w:400,h:600}, {x:400,y:0,w:400,h:600}, {x:800,y:0,w:400,h:600},
-  {x:0,y:600,w:400,h:600}, {x:400,y:600,w:400,h:600}, {x:800,y:600,w:400,h:600},
-  {x:0,y:1200,w:400,h:600}, {x:400,y:1200,w:400,h:600}, {x:800,y:1200,w:400,h:600}
-]
-}
+{ id: 'classic_3cut', mode: 'multi', name: '2x6" 3 PHOTO', desc: 'Classic 3-Cut Strip', type: 'twin-strip', orientation: 'portrait', canvas: 'PORTRAIT', shots: 3, icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="14" y="6" width="12" height="8" rx="0.5"/><rect x="14" y="16" width="12" height="8" rx="0.5"/><rect x="14" y="26" width="12" height="8" rx="0.5"/></svg>`, slots: [ {x:0,y:0,w:600,h:600}, {x:0,y:600,w:600,h:600}, {x:0,y:1200,w:600,h:600} ] },
+{ id: 'classic_4cut', mode: 'multi', name: '2x6" 4 PHOTO', desc: 'Classic 4-Cut Strip', type: 'twin-strip', orientation: 'portrait', canvas: 'PORTRAIT', shots: 4, icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="14" y="4" width="12" height="6" rx="0.5"/><rect x="14" y="12" width="12" height="6" rx="0.5"/><rect x="14" y="20" width="12" height="6" rx="0.5"/><rect x="14" y="28" width="12" height="6" rx="0.5"/></svg>`, slots: [ {x:0,y:0,w:600,h:450}, {x:0,y:450,w:600,h:450}, {x:0,y:900,w:600,h:450}, {x:0,y:1350,w:600,h:450} ] },
+{ id: 'single_portrait', mode: 'multi', name: '4x6" PORTRAIT', desc: 'Single Portrait', type: 'full-sheet', orientation: 'portrait', canvas: 'PORTRAIT', shots: 1, icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="8" y="6" width="24" height="22" rx="0.5"/></svg>`, slots: [ {x:0,y:0,w:1200,h:1800} ] },
+{ id: 'single_landscape', mode: 'multi', name: '4x6" LANDSCAPE', desc: 'Single Landscape', type: 'full-sheet', orientation: 'landscape', canvas: 'LANDSCAPE', shots: 1, icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="4" y="10" width="32" height="16" rx="0.5"/></svg>`, slots: [ {x:0,y:0,w:1800,h:1200} ] },
+{ id: 'mini_4_sticker', mode: 'single', name: '4 MINI STICKERS', desc: 'Mini Sticker Sheet', type: 'multiprint', orientation: 'portrait', canvas: 'PORTRAIT', shots: 1, icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="8" y="8" width="10" height="10" rx="1"/><rect x="22" y="8" width="10" height="10" rx="1"/><rect x="8" y="22" width="10" height="10" rx="1"/><rect x="22" y="22" width="10" height="10" rx="1"/></svg>`, slots: [ {x:0,y:0,w:600,h:900}, {x:600,y:0,w:600,h:900}, {x:0,y:900,w:600,h:900}, {x:600,y:900,w:600,h:900} ] },
+{ id: 'mix_6_sticker', mode: 'single', name: '6 MIX STICKERS', desc: 'Mixed Sizes Sheet', type: 'multiprint', orientation: 'portrait', canvas: 'PORTRAIT', shots: 1, icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="6" y="4" width="12" height="14" rx="1"/><rect x="22" y="4" width="12" height="14" rx="1"/><rect x="6" y="20" width="12" height="6" rx="1"/><rect x="22" y="20" width="12" height="6" rx="1"/><rect x="6" y="28" width="12" height="6" rx="1"/><rect x="22" y="28" width="12" height="6" rx="1"/></svg>`, slots: [ {x:0,y:0,w:600,h:900}, {x:600,y:0,w:600,h:900}, {x:0,y:900,w:600,h:450}, {x:600,y:900,w:600,h:450}, {x:0,y:1350,w:600,h:450}, {x:600,y:1350,w:600,h:450} ] },
+{ id: 'mix_8_sticker', mode: 'single', name: '8 MIX STICKERS', desc: 'Mixed Sizes Sheet', type: 'multiprint', orientation: 'portrait', canvas: 'PORTRAIT', shots: 1, icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="6" y="4" width="12" height="14" rx="1"/><rect x="22" y="4" width="12" height="14" rx="1"/><rect x="4" y="20" width="8" height="6" rx="1"/><rect x="16" y="20" width="8" height="6" rx="1"/><rect x="28" y="20" width="8" height="6" rx="1"/><rect x="4" y="28" width="8" height="6" rx="1"/><rect x="16" y="28" width="8" height="6" rx="1"/><rect x="28" y="28" width="8" height="6" rx="1"/></svg>`, slots: [ {x:0,y:0,w:600,h:900}, {x:600,y:0,w:600,h:900}, {x:0,y:900,w:400,h:450}, {x:400,y:900,w:400,h:450}, {x:800,y:900,w:400,h:450}, {x:0,y:1350,w:400,h:450}, {x:400,y:1350,w:400,h:450}, {x:800,y:1350,w:400,h:450} ] },
+{ id: 'grid_9_sticker', mode: 'single', name: '9 GRID STICKERS', desc: '3x3 Grid Sheet', type: 'multiprint', orientation: 'portrait', canvas: 'PORTRAIT', shots: 1, icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="6" y="4" width="8" height="8" rx="1"/><rect x="16" y="4" width="8" height="8" rx="1"/><rect x="26" y="4" width="8" height="8" rx="1"/><rect x="6" y="14" width="8" height="8" rx="1"/><rect x="16" y="14" width="8" height="8" rx="1"/><rect x="26" y="14" width="8" height="8" rx="1"/><rect x="6" y="24" width="8" height="8" rx="1"/><rect x="16" y="24" width="8" height="8" rx="1"/><rect x="26" y="24" width="8" height="8" rx="1"/></svg>`, slots: [ {x:0,y:0,w:400,h:600}, {x:400,y:0,w:400,h:600}, {x:800,y:0,w:400,h:600}, {x:0,y:600,w:400,h:600}, {x:400,y:600,w:400,h:600}, {x:800,y:600,w:400,h:600}, {x:0,y:1200,w:400,h:600}, {x:400,y:1200,w:400,h:600}, {x:800,y:1200,w:400,h:600} ] }
 ];
 
 const FRAMES = [
@@ -478,11 +437,13 @@ const FRAMES = [
 { id: 'no_bad', name: 'No Bad', category: 'special', supportedLayouts: ['classic_4cut'], overlay: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/no%20bad.png', mask: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/no%20bad_mark.png' }
 ];
 
+// 🎨 เพิ่มฟิลเตอร์ POP ART
 const FILTERS = [
 { id: 'normal', name: 'NORMAL', css: 'none' },
 { id: 'beauty', name: 'BEAUTY', css: 'brightness(1.15) contrast(1.05) saturate(1.1)' },
 { id: 'bw', name: 'B&W', css: 'grayscale(100%) contrast(1.2)' },
-{ id: 'sepia', name: 'SEPIA', css: 'sepia(100%) contrast(1.1)' }
+{ id: 'sepia', name: 'SEPIA', css: 'sepia(100%) contrast(1.1)' },
+{ id: 'popart', name: 'POP ART', css: 'popart' }
 ];
 const CATEGORIES = ['special'];
 
@@ -496,10 +457,44 @@ let retakeTargetIndex = -1, finalComposedUrl = null, finalGifUrl = null;
 let isShooting = false, isDragging = false;
 let startX = 0, startY = 0, currentX = 0, currentY = 0;
 
-let slotAssetsData = []; // เก็บ Data URL & Images ของ Mask และ Overlay ประจำช่อง
+let slotAssetsData = []; 
 let previewRAF = null;
-let shootInterval = null; // ป้องกันการนับถอยหลังค้าง
-let cameraTimer = 5; // ค่าเริ่มต้นเวลานับถอยหลัง
+let shootInterval = null; 
+let cameraTimer = 5; 
+
+// 🪄 AI Background Removal Variables
+let bgRemovalMode = 0; // 0=OFF, 1=PINK, 2=GRID, 3=CLOUDS, 4=HOLO
+const BG_NAMES = ['OFF', 'PINK', 'GRID', 'CLOUDS', 'HOLO'];
+let selfieSegmentation = null;
+let aiLoopActive = false;
+let hasAiLoaded = false;
+let lastProcessedCanvas = document.createElement('canvas'); 
+
+// สร้างลวดลาย Pattern (ก้อนเมฆและตาราง)
+let gridPattern = null;
+function getGridPattern(ctx) {
+  if(gridPattern) return gridPattern;
+  const c = document.createElement('canvas'); c.width = 40; c.height = 40;
+  const cctx = c.getContext('2d');
+  cctx.fillStyle = '#fff0f5'; cctx.fillRect(0,0,40,40); 
+  cctx.strokeStyle = '#ffd1dc'; cctx.lineWidth = 2; 
+  cctx.beginPath(); cctx.moveTo(0,0); cctx.lineTo(40,0); cctx.moveTo(0,0); cctx.lineTo(0,40); cctx.stroke();
+  gridPattern = ctx.createPattern(c, 'repeat');
+  return gridPattern;
+}
+
+let cloudPattern = null;
+const cloudImg = new Image();
+// SVG รูปก้อนเมฆน่ารักๆ แบบ Base64
+cloudImg.src = "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23d6e8f9'/%3E%3Cpath d='M20,60 a15,15 0 0,1 0,-30 a20,20 0 0,1 40,-10 a15,15 0 0,1 20,15 a15,15 0 0,1 -10,25 z' fill='%23ffffff' opacity='0.9'/%3E%3C/svg%3E";
+function getCloudPattern(ctx) {
+  if(cloudPattern) return cloudPattern;
+  if(cloudImg.complete && cloudImg.naturalWidth > 0) {
+    cloudPattern = ctx.createPattern(cloudImg, 'repeat');
+    return cloudPattern;
+  }
+  return '#d6e8f9'; // fallback color
+}
 
 const $ = id => document.getElementById(id);
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -510,16 +505,23 @@ if (!audioCtx) audioCtx = new AudioCtx();
 const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
 osc.connect(gain); gain.connect(audioCtx.destination);
 if (type === 'beep') {
-osc.type = 'sine'; osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
-osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+  osc.type = 'sine'; osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+  gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+  osc.start(); osc.stop(audioCtx.currentTime + 0.1);
 } else if (type === 'shutter') {
-osc.type = 'triangle'; osc.frequency.setValueAtTime(400, audioCtx.currentTime);
-osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.2);
-gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
-osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+  osc.type = 'triangle'; osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.2);
+  gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+  osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+} else if (type === 'print') {
+  // 🖨️ เสียงปริ้นท์รูป (เครื่องกำลังคายกระดาษ)
+  osc.type = 'sawtooth'; osc.frequency.setValueAtTime(30, audioCtx.currentTime);
+  osc.frequency.linearRampToValueAtTime(20, audioCtx.currentTime + 2.5);
+  gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+  gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 2.5);
+  osc.start(); osc.stop(audioCtx.currentTime + 2.5);
 }
 }
 
@@ -533,8 +535,9 @@ img.src = src;
 
 // 📌 4. FULL HARD RESET
 function forceHardReset() {
-if (shootInterval) { clearInterval(shootInterval); shootInterval = null; } // เคลียร์ตัวจับเวลากล้อง
-$('countdown-display').classList.add('hidden'); // ซ่อนตัวเลขถอยหลัง
+if (shootInterval) { clearInterval(shootInterval); shootInterval = null; } 
+$('countdown-display').classList.add('hidden'); 
+aiLoopActive = false; 
 
 capturedPhotos = []; photoTransforms = []; capturedPhotoRatios = []; retakeTargetIndex = -1;
 activePhotoIndex = 0; isShooting = false; slotAssetsData = [];
@@ -543,9 +546,12 @@ const cCanvas = $('preview-canvas');
 if (cCanvas) { const ctx = cCanvas.getContext('2d'); ctx.clearRect(0,0, cCanvas.width, cCanvas.height); }
 const container = $('camera-viewport');
 if (container) container.style.aspectRatio = '';
+
+// Reset Dispenser
+const disp = $('dispensed-photo-container');
+if (disp) { disp.style.transition = 'none'; disp.style.transform = 'translateY(-120%)'; }
 }
 
-// 📌 5. THE ULTIMATE SLICER 
 function detectBlackComponents(imageData, W, H) {
   const data    = imageData.data;
   const visited = new Uint8Array(W * H);
@@ -602,7 +608,6 @@ async function extractLayoutAssets() {
     } catch(e) { console.warn('[Tinkle] load error:', e); }
   }
 
-  // หากไม่มีกรอบ หรือไม่มี Mask ให้สร้างกรอบจำลองขึ้นมาจากช่อง slot ได้เลย
   if (!markImg) {
     for (let i = 0; i < currentLayout.slots.length; i++) {
       const slot = currentLayout.slots[i];
@@ -686,19 +691,40 @@ async function extractLayoutAssets() {
 
     slotAssetsData.push(entry);
     
-    // Clear temp canvas
     maskL.width = 0; maskL.height = 0;
     if(overlayL) { overlayL.width = 0; overlayL.height = 0; }
   }
 }
 
-function renderOneSlot(outputCtx, outputW, outputH, srcElem, isVideo, maskImg, overlayImg, transform, filterCss) {
+function renderOneSlot(outputCtx, outputW, outputH, srcElem, isVideo, maskImg, overlayImg, transform, filterCss, slotIndex = 0) {
+  outputCtx.save(); // 📌 MASTER SAVE
+  
+  // 📌 ลบมุมคม (Rounded Corners) สไตล์สติกเกอร์ สำหรับเคสที่ไม่มี Mask
+  if (!maskImg) {
+    outputCtx.beginPath();
+    const r = Math.min(outputW, outputH) * 0.04; // ความโค้งมุม 4% 
+    outputCtx.moveTo(r, 0);
+    outputCtx.lineTo(outputW - r, 0);
+    outputCtx.quadraticCurveTo(outputW, 0, outputW, r);
+    outputCtx.lineTo(outputW, outputH - r);
+    outputCtx.quadraticCurveTo(outputW, outputH, outputW - r, outputH);
+    outputCtx.lineTo(r, outputH);
+    outputCtx.quadraticCurveTo(0, outputH, 0, outputH - r);
+    outputCtx.lineTo(0, r);
+    outputCtx.quadraticCurveTo(0, 0, r, 0);
+    outputCtx.closePath();
+    outputCtx.clip();
+  }
+
   outputCtx.fillStyle = '#000000';
   outputCtx.fillRect(0, 0, outputW, outputH);
 
-  const srcW = isVideo ? srcElem.videoWidth  : srcElem.width;
-  const srcH = isVideo ? srcElem.videoHeight : srcElem.height;
-  if (!srcW || !srcH) return;
+  const srcW = isVideo ? (srcElem.videoWidth || srcElem.width) : srcElem.width;
+  const srcH = isVideo ? (srcElem.videoHeight || srcElem.height) : srcElem.height;
+  if (!srcW || !srcH) {
+      outputCtx.restore();
+      return;
+  }
 
   const srcRatio = srcW / srcH;
   const outRatio = outputW / outputH;
@@ -712,8 +738,17 @@ function renderOneSlot(outputCtx, outputW, outputH, srcElem, isVideo, maskImg, o
     outputCtx.translate((transform.pctX||0) * outputW, (transform.pctY||0) * outputH);
     outputCtx.scale(transform.zoom||1, transform.zoom||1);
   }
-  if (filterCss && filterCss !== 'none') outputCtx.filter = filterCss;
-  if (isVideo && isFacingUser) outputCtx.scale(-1, 1);
+  
+  // 🎨 ฟิลเตอร์ Pop-Art สลับสีแต่ละช่องแบบไดนามิก
+  let applyFilter = filterCss;
+  if (filterCss === 'popart') {
+    const popHues = [0, 60, 120, 180, 240, 300, 30, 210, 330];
+    applyFilter = `hue-rotate(${popHues[slotIndex % popHues.length]}deg) saturate(1.8) contrast(1.1)`;
+  }
+  if (applyFilter && applyFilter !== 'none') outputCtx.filter = applyFilter;
+  
+  if (isFacingUser) outputCtx.scale(-1, 1);
+  
   outputCtx.drawImage(srcElem, -drawW/2, -drawH/2, drawW, drawH);
   outputCtx.restore();
 
@@ -729,10 +764,12 @@ function renderOneSlot(outputCtx, outputW, outputH, srcElem, isVideo, maskImg, o
     outputCtx.drawImage(overlayImg, 0, 0, outputW, outputH);
     outputCtx.restore();
   }
+  
+  outputCtx.restore(); // 📌 MASTER RESTORE
 }
 
-function renderSlot(targetCtx, targetW, targetH, srcElem, maskElement, overlayElement, transform, filterCss, isVideo, assets, region, scale) {
-  renderOneSlot(targetCtx, targetW, targetH, srcElem, isVideo, maskElement, overlayElement, transform, filterCss);
+function renderSlot(targetCtx, targetW, targetH, srcElem, maskElement, overlayElement, transform, filterCss, isVideo, assets, region, scale, slotIndex = 0) {
+  renderOneSlot(targetCtx, targetW, targetH, srcElem, isVideo, maskElement, overlayElement, transform, filterCss, slotIndex);
 }
 
 // ================= NAVIGATION =================
@@ -762,6 +799,93 @@ case 'REVIEW': forceHardReset(); navigate('FILTER'); break;
 }
 }
 
+// 🪄 ================= AI BACKGROUND REMOVAL LOGIC =================
+async function toggleBgRemoval() {
+  playSfx('beep');
+  bgRemovalMode = (bgRemovalMode + 1) % BG_NAMES.length;
+  const btn = $('bg-toggle-btn');
+  
+  if (bgRemovalMode !== 0) {
+    btn.classList.add('bg-pink-500/80', 'border-pink-300');
+    btn.classList.remove('bg-black/50', 'border-white/30');
+  } else {
+    btn.classList.remove('bg-pink-500/80', 'border-pink-300');
+    btn.classList.add('bg-black/50', 'border-white/30');
+  }
+
+  if (bgRemovalMode !== 0 && !selfieSegmentation) {
+    btn.innerText = `🪄 LOADING...`;
+    selfieSegmentation = new SelfieSegmentation({locateFile: (file) => {
+      return `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`;
+    }});
+    selfieSegmentation.setOptions({ modelSelection: 1 });
+    
+    selfieSegmentation.onResults((results) => {
+      if (!hasAiLoaded) {
+        hasAiLoaded = true;
+        $('bg-toggle-btn').innerText = `🪄 BG: ${BG_NAMES[bgRemovalMode]}`;
+      }
+      onMediaPipeResults(results);
+    });
+  } else if (hasAiLoaded) {
+    btn.innerText = `🪄 BG: ${BG_NAMES[bgRemovalMode]}`;
+  } else if (bgRemovalMode !== 0 && !hasAiLoaded) {
+    btn.innerText = `🪄 LOADING...`;
+  } else {
+    btn.innerText = `🪄 BG: OFF`;
+  }
+}
+
+function onMediaPipeResults(results) {
+  lastProcessedCanvas.width = results.image.width;
+  lastProcessedCanvas.height = results.image.height;
+  const ctx = lastProcessedCanvas.getContext('2d');
+  
+  ctx.clearRect(0, 0, lastProcessedCanvas.width, lastProcessedCanvas.height);
+  
+  // 1. วาด Mask 
+  ctx.drawImage(results.segmentationMask, 0, 0, lastProcessedCanvas.width, lastProcessedCanvas.height);
+  
+  // 2. ซ้อนภาพคนเข้าไป
+  ctx.globalCompositeOperation = 'source-in';
+  ctx.drawImage(results.image, 0, 0, lastProcessedCanvas.width, lastProcessedCanvas.height);
+  
+  // 3. ใส่ฉากหลังตามลวดลาย
+  ctx.globalCompositeOperation = 'destination-over';
+  if (bgRemovalMode === 1) { // PINK
+      ctx.fillStyle = '#ffdae0';
+  } else if (bgRemovalMode === 2) { // GRID
+      ctx.fillStyle = getGridPattern(ctx);
+  } else if (bgRemovalMode === 3) { // CLOUDS
+      ctx.fillStyle = getCloudPattern(ctx);
+  } else if (bgRemovalMode === 4) { // HOLO
+      const grd = ctx.createLinearGradient(0, 0, lastProcessedCanvas.width, lastProcessedCanvas.height);
+      grd.addColorStop(0, '#ff9a9e');
+      grd.addColorStop(0.5, '#fecfef');
+      grd.addColorStop(1, '#a1c4fd');
+      ctx.fillStyle = grd;
+  }
+  
+  if(bgRemovalMode !== 0) {
+      ctx.fillRect(0, 0, lastProcessedCanvas.width, lastProcessedCanvas.height);
+  }
+  
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+async function processAILoop() {
+  if (!aiLoopActive) return;
+  const vid = $('camera-video');
+  if (bgRemovalMode !== 0 && selfieSegmentation && vid.readyState >= 2 && !vid.paused) {
+    try {
+      await selfieSegmentation.send({image: vid});
+    } catch(e) { console.warn('MediaPipe error:', e); }
+  }
+  if (aiLoopActive) {
+    requestAnimationFrame(processAILoop);
+  }
+}
+
 // 📌 7. TRUE ISOLATED CANVAS PREVIEW
 async function startCamera() {
 if (stream) stream.getTracks().forEach(t => t.stop());
@@ -779,6 +903,10 @@ video: { facingMode: isFacingUser ? 'user' : 'environment', width: {ideal:1280},
 const vid = $('camera-video');
 vid.srcObject = stream;
 await new Promise(res => { if (vid.readyState >= 2) res(); else vid.onloadeddata = res; });
+
+aiLoopActive = true;
+processAILoop();
+
 startPreviewLoop();
 } catch(e) {
 showAlert('Please allow camera access 🥺');
@@ -787,7 +915,6 @@ showAlert('Please allow camera access 🥺');
 
 function toggleCamera() { isFacingUser = !isFacingUser; startCamera(); }
 
-// สลับเวลานับถอยหลัง
 function toggleTimer() {
   playSfx('beep');
   if (cameraTimer === 3) cameraTimer = 5;
@@ -829,13 +956,15 @@ const offCanvas = document.createElement('canvas');
 offCanvas.width = cW; offCanvas.height = cH;
 const offCtx = offCanvas.getContext('2d');
 
-renderOneSlot(offCtx, cW, cH, vid, true, assets.maskImg, assets.overlayImg, null, currentFilter.css);
+const sourceImage = (bgRemovalMode !== 0 && hasAiLoaded && lastProcessedCanvas.width > 0) ? lastProcessedCanvas : vid;
+
+renderOneSlot(offCtx, cW, cH, sourceImage, true, assets.maskImg, assets.overlayImg, null, currentFilter.css, slotIdx);
 
 const ctx = canvas.getContext('2d');
 ctx.clearRect(0, 0, cW, cH);
 ctx.drawImage(offCanvas, 0, 0);
 
-offCanvas.width = 0; offCanvas.height = 0; // memory clean
+offCanvas.width = 0; offCanvas.height = 0; 
 previewRAF = requestAnimationFrame(drawFrame);
 }
 drawFrame();
@@ -858,7 +987,7 @@ if (isShooting) return;
 isShooting = true;
 playSfx('beep');
 $('tap-to-shoot-hint').classList.add('hidden');
-let count = cameraTimer; // ⏳ ใช้ค่าที่ผู้ใช้เลือก
+let count = cameraTimer; 
 $('countdown-display').classList.remove('hidden');
 $('countdown-text').innerText = count;
 
@@ -882,17 +1011,20 @@ fl.classList.remove('hidden'); setTimeout(() => fl.classList.add('hidden'), 400)
 
 const vid = $('camera-video');
 const canvas = document.createElement('canvas');
-const vw = vid.videoWidth || 1280;
-const vh = vid.videoHeight || 720;
+
+const src = (bgRemovalMode !== 0 && hasAiLoaded && lastProcessedCanvas.width > 0) ? lastProcessedCanvas : vid;
+const vw = src.videoWidth || src.width || 1280;
+const vh = src.videoHeight || src.height || 720;
+
 canvas.width = vw; canvas.height = vh;
 const ctx = canvas.getContext('2d');
 ctx.save();
 if (isFacingUser) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
-ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+ctx.drawImage(src, 0, 0, canvas.width, canvas.height);
 ctx.restore();
 
 const raw = canvas.toDataURL('image/jpeg', 0.92);
-canvas.width = 0; canvas.height = 0; // memory cleanup
+canvas.width = 0; canvas.height = 0; 
 const imgRatio = vw / vh;
 
 if (retakeTargetIndex !== -1) {
@@ -996,9 +1128,16 @@ if (actualImgRatio > tgtRatio) {
     cssH = `${(tgtRatio / actualImgRatio) * 100}%`;
 }
 
+// 🎨 ฟิลเตอร์ Pop-Art ในหน้า Preview
+let displayFilter = currentFilter.css;
+if (displayFilter === 'popart') {
+    const popHues = [0, 60, 120, 180, 240, 300, 30, 210, 330];
+    displayFilter = `hue-rotate(${popHues[idx % popHues.length]}deg) saturate(1.8) contrast(1.1)`;
+}
+
 w.innerHTML = `
 <div class="absolute inset-0 overflow-hidden touch-none" style="width:100%;height:100%;">
-<img id="review-img-${idx}" src="${raw}" style="filter:${currentFilter.css}; position: absolute; top: 50%; left: 50%; width: ${cssW}; height: ${cssH}; max-width: none !important; max-height: none !important; object-fit: fill; transform: translate(-50%, -50%) translate(${t.pctX * 100}%, ${t.pctY * 100}%) scale(${t.zoom}); pointer-events:none; transform-origin:center;" alt=""/>
+<img id="review-img-${idx}" src="${raw}" style="filter:${displayFilter}; position: absolute; top: 50%; left: 50%; width: ${cssW}; height: ${cssH}; max-width: none !important; max-height: none !important; object-fit: fill; transform: translate(-50%, -50%) translate(${t.pctX * 100}%, ${t.pctY * 100}%) scale(${t.zoom}); pointer-events:none; transform-origin:center;" alt=""/>
 </div>
 ${overlaySrc ? `<img src="${overlaySrc}" class="absolute inset-0 w-full h-full pointer-events-none" />` : ''}
 <div class="absolute bottom-0 w-full bg-gradient-to-t from-black/60 to-transparent flex items-end justify-center pb-2 pt-6 z-20 pointer-events-none">
@@ -1039,15 +1178,15 @@ for (let i = 0; i < currentLayout.slots.length; i++) {
   const rL = assets.region;
   const scL = document.createElement('canvas');
   scL.width = rL.w; scL.height = rL.h;
-  renderOneSlot(scL.getContext('2d'), rL.w, rL.h, imgs[shotIndex], false, assets.maskImg, assets.overlayImg, transform, currentFilter.css);
+  renderOneSlot(scL.getContext('2d'), rL.w, rL.h, imgs[shotIndex], false, assets.maskImg, assets.overlayImg, transform, currentFilter.css, i);
   ctx.drawImage(scL, rL.x0, rL.y0);
-  scL.width = 0; scL.height = 0; // memory clean
+  scL.width = 0; scL.height = 0; 
 
   if (isTwinExport && assets.regionRight) {
     const rR = assets.regionRight;
     const scR = document.createElement('canvas');
     scR.width = rR.w; scR.height = rR.h;
-    renderOneSlot(scR.getContext('2d'), rR.w, rR.h, imgs[shotIndex], false, assets.maskImgRight || assets.maskImg, assets.overlayImgRight || assets.overlayImg, transform, currentFilter.css);
+    renderOneSlot(scR.getContext('2d'), rR.w, rR.h, imgs[shotIndex], false, assets.maskImgRight || assets.maskImg, assets.overlayImgRight || assets.overlayImg, transform, currentFilter.css, i + currentLayout.slots.length);
     ctx.drawImage(scR, rR.x0, rR.y0);
     scR.width = 0; scR.height = 0;
   }
@@ -1068,9 +1207,11 @@ ctx.font = 'bold 20px monospace'; ctx.fillStyle = 'rgba(255,255,255,0.7)';
 ctx.textAlign = 'right'; ctx.fillText(dateStr, master.w - 60, master.h - 40);
 
 finalComposedUrl = canvas.toDataURL('image/jpeg', 1.0);
-canvas.width = 0; canvas.height = 0; // memory cleanup
+canvas.width = 0; canvas.height = 0; 
 $('final-image').src = finalComposedUrl;
 document.body.style.cursor = 'default';
+
+// 🎀 นำ Dispenser Animation ออก และกลับมาแสดงผลปกติ
 navigate('RESULT');
 
 if (capturedPhotos.length > 1 && currentLayout.type !== 'multiprint') {
@@ -1093,12 +1234,12 @@ const transform = photoTransforms[i] || {zoom:1, pctX:0, pctY:0};
 const assets = slotAssetsData[i];
 
 const sc = document.createElement('canvas'); sc.width = slot.w; sc.height = slot.h;
-renderSlot(sc.getContext('2d'), slot.w, slot.h, img, assets.maskImg, assets.overlayImg, transform, currentFilter.css, false, assets, assets.region, 1);
+renderSlot(sc.getContext('2d'), slot.w, slot.h, img, assets.maskImg, assets.overlayImg, transform, currentFilter.css, false, assets, assets.region, 1, i);
 
 const drawScale = Math.min(540 / sc.width, 640 / sc.height);
 const finalW = sc.width * drawScale, finalH = sc.height * drawScale;
 ctx.drawImage(sc, (600 - finalW)/2, (800 - finalH - 60)/2, finalW, finalH);
-sc.width = 0; sc.height = 0; // clean memory
+sc.width = 0; sc.height = 0; 
 
 ctx.strokeStyle = '#ffdae0'; ctx.lineWidth = 4; ctx.strokeRect(30, 30, 540, 640);
 ctx.fillStyle = '#ff2a85'; ctx.font = '900 36px monospace'; ctx.textAlign = 'center'; ctx.fillText('TINKLE PHOTO CLUB ✨', 300, 740);
@@ -1118,7 +1259,7 @@ function init() {
   initPanEvents(); 
   renderFilters(); 
   preloadAssets(); 
-  initIdleTimer(); // ⏱️ เริ่มต้นระบบนับเวลาจับจอ
+  initIdleTimer(); 
 }
 
 function preloadAssets() {
@@ -1199,7 +1340,8 @@ FILTERS.forEach((filter, index) => {
 const btn = document.createElement('div'); btn.id = `filter-btn-${index}`;
 btn.className = `filter-item bg-white/90 backdrop-blur border-[3px] p-3 rounded-2xl shadow-sm flex flex-col items-center justify-center text-center cursor-pointer transition-transform active:scale-[0.95]`;
 btn.onclick = () => { currentFilter = filter; updateFilterSelection(); playSfx('beep'); if (btn.classList.contains('selected')) setTimeout(() => navigate('CAMERA'), 200); };
-btn.innerHTML = `<div class="w-12 h-12 rounded-full overflow-hidden mb-2 border-2 border-gray-200 shadow-inner bg-gray-300 relative"><div class="absolute inset-0 bg-cover bg-center" style="background-image:url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 fill=%22%23ffdae0%22/%3E%3Ctext x=%2230%22 y=%2260%22 font-size=%2240%22%3E📸%3C/text%3E%3C/svg%3E');filter:${filter.css}"></div></div><h3 class="font-black text-[#6e6367] text-[10px] uppercase leading-tight">${filter.name}</h3>`;
+const filterStyle = filter.css === 'popart' ? 'hue-rotate(90deg) saturate(1.8)' : filter.css;
+btn.innerHTML = `<div class="w-12 h-12 rounded-full overflow-hidden mb-2 border-2 border-gray-200 shadow-inner bg-gray-300 relative"><div class="absolute inset-0 bg-cover bg-center" style="background-image:url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 fill=%22%23ffdae0%22/%3E%3Ctext x=%2230%22 y=%2260%22 font-size=%2240%22%3E📸%3C/text%3E%3C/svg%3E');filter:${filterStyle}"></div></div><h3 class="font-black text-[#6e6367] text-[10px] uppercase leading-tight">${filter.name}</h3>`;
 $('filter-list-container').appendChild(btn);
 });
 updateFilterSelection();
@@ -1234,12 +1376,22 @@ function resetApp() {
 forceHardReset(); currentMode = 'multi'; activeLayouts = []; carouselIndex = 0; currentLayout = null; currentFrame = null; currentFilter = FILTERS[0]; updateFilterSelection();
 const zs = $('review-zoom-slider'); if (zs) zs.value = 1; $('final-image').src = '';
 const gifCtrl = $('gif-controls'); if (gifCtrl) { gifCtrl.classList.add('hidden', 'opacity-0'); gifCtrl.classList.remove('opacity-100'); }
+
+// 🪄 เคลียร์สถานะการลบพื้นหลังกลับไปเป็นค่าเริ่มต้น
+bgRemovalMode = 0;
+const bgBtn = $('bg-toggle-btn');
+if (bgBtn) {
+  bgBtn.innerText = '🪄 BG: OFF';
+  bgBtn.classList.remove('bg-pink-500/80', 'border-pink-300');
+  bgBtn.classList.add('bg-black/50', 'border-white/30');
+}
+
 navigate('HOME');
 }
 
 // ================= IDLE TIMEOUT (SCREENSAVER) =================
 let idleTimeout = null;
-const IDLE_TIME_MS = 60000; // 60 วินาที
+const IDLE_TIME_MS = 60000; 
 
 function initIdleTimer() {
   resetIdleTimer();
@@ -1265,7 +1417,7 @@ function resetIdleTimer() {
 function showScreensaver() {
   const ss = $('screensaver');
   if (!ss.classList.contains('hidden')) return;
-  resetApp(); // กลับหน้าหลักและเคลียร์ข้อมูลค้างทั้งหมด
+  resetApp(); 
   ss.classList.remove('hidden');
   ss.classList.add('flex');
 }
