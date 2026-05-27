@@ -139,6 +139,14 @@ position: relative;
 background-color: transparent;
 transform: translateZ(0);
 }
+
+/* Screensaver Overlay */
+#screensaver {
+  background-image: radial-gradient(#ff4d9a 15%, transparent 16%), radial-gradient(#ff4d9a 15%, transparent 16%);
+  background-size: 40px 40px; background-position: 0 0, 20px 20px;
+  background-color: var(--pastel-pink);
+}
+.pulse-slow { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
 </style>
 </head>
 <body>
@@ -149,6 +157,24 @@ transform: translateZ(0);
 <p id="custom-alert-msg" class="text-[#6e6367] font-black text-[12px] mb-5 leading-relaxed"></p>
 <button onclick="document.getElementById('custom-alert').classList.remove('flex'); document.getElementById('custom-alert').classList.add('hidden');" class="bg-[#ff4d9a] text-white font-black rounded-full px-6 py-2 shadow-md active:scale-95 transition-transform text-lg">OK</button>
 </div>
+</div>
+
+<!-- ⏱️ Screensaver Overlay -->
+<div id="screensaver" class="fixed inset-0 z-[200] hidden flex-col items-center justify-center cursor-pointer transition-opacity duration-500">
+  <div class="absolute inset-0 bg-white/40 backdrop-blur-[2px]"></div>
+  <div class="relative z-10 flex flex-col items-center">
+    <div class="text-[80px] text-center sparkle-anim leading-none font-black text-white drop-shadow-md mb-8" style="text-shadow: 0 6px 20px rgba(255,42,133,0.4);">
+      TINKLE<br/>PHOTO CLUB
+    </div>
+    <div class="bg-white/90 backdrop-blur-md px-10 py-5 rounded-full border-4 border-[#ff4d9a] shadow-xl pulse-slow">
+      <span class="text-[#ff2a85] text-3xl font-black tracking-widest uppercase">Tap to Start 📸</span>
+    </div>
+  </div>
+  
+  <div class="absolute top-[15%] left-[8%] text-6xl sparkle-anim z-10" style="animation-delay: 0.2s;">🎀</div>
+  <div class="absolute bottom-[20%] right-[10%] text-6xl sparkle-anim z-10" style="animation-delay: 1.2s;">✨</div>
+  <div class="absolute top-[35%] right-[15%] text-5xl sparkle-anim z-10" style="animation-delay: 0.7s;">💖</div>
+  <div class="absolute bottom-[15%] left-[15%] text-5xl sparkle-anim z-10" style="animation-delay: 0.5s;">🌷</div>
 </div>
 
 <div id="app-container">
@@ -262,12 +288,17 @@ transform: translateZ(0);
 <button class="back-btn back-btn-dark" onclick="goBack('CAMERA')">◀</button>
 
 <div class="flex-1 flex flex-col items-center justify-center relative w-full overflow-hidden px-4">
+<!-- ⏳ ปุ่มเลือกเวลานับถอยหลัง (Timer Options) ย้ายมาตรงกลาง -->
+<button id="timer-toggle-btn" onclick="toggleTimer()" class="absolute top-3 left-1/2 -translate-x-1/2 z-20 h-12 px-4 bg-black/40 backdrop-blur rounded-full flex items-center justify-center text-white active:scale-95 border-2 border-white/20 font-black text-[15px] shadow-md">
+  ⏱️ 5S
+</button>
+
 <!-- 🎯 ขยายปุ่มสลับกล้องให้ใหญ่ขึ้น -->
-<button onclick="toggleCamera()" class="absolute top-3 right-3 z-20 w-12 h-12 bg-black/40 backdrop-blur rounded-full flex items-center justify-center text-white active:scale-95 border-2 border-white/20">
+<button onclick="toggleCamera()" class="absolute top-3 right-3 z-20 w-12 h-12 bg-black/40 backdrop-blur rounded-full flex items-center justify-center text-white active:scale-95 border-2 border-white/20 shadow-md">
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/><path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><circle cx="12" cy="12" r="3"/><path d="m18 22-3-3 3-3"/><path d="m6 2 3 3-3 3"/></svg>
 </button>
 
-<div id="camera-viewport-container" class="w-full max-w-[260px] flex justify-center items-center relative" onclick="startShootingSequence()">
+<div id="camera-viewport-container" class="w-full max-w-[260px] flex justify-center items-center relative mt-6" onclick="startShootingSequence()">
 <div id="camera-viewport">
 <video id="camera-video" autoplay playsinline muted></video>
 <canvas id="preview-canvas" class="block w-full h-full object-contain"></canvas>
@@ -467,6 +498,8 @@ let startX = 0, startY = 0, currentX = 0, currentY = 0;
 
 let slotAssetsData = []; // เก็บ Data URL & Images ของ Mask และ Overlay ประจำช่อง
 let previewRAF = null;
+let shootInterval = null; // ป้องกันการนับถอยหลังค้าง
+let cameraTimer = 5; // ค่าเริ่มต้นเวลานับถอยหลัง
 
 const $ = id => document.getElementById(id);
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -500,6 +533,9 @@ img.src = src;
 
 // 📌 4. FULL HARD RESET
 function forceHardReset() {
+if (shootInterval) { clearInterval(shootInterval); shootInterval = null; } // เคลียร์ตัวจับเวลากล้อง
+$('countdown-display').classList.add('hidden'); // ซ่อนตัวเลขถอยหลัง
+
 capturedPhotos = []; photoTransforms = []; capturedPhotoRatios = []; retakeTargetIndex = -1;
 activePhotoIndex = 0; isShooting = false; slotAssetsData = [];
 
@@ -734,6 +770,7 @@ if (slotAssetsData.length === 0) await extractLayoutAssets();
 updateCameraUI();
 $('camera-filter-badge').innerText = currentFilter.name;
 $('tap-to-shoot-hint').classList.remove('hidden');
+$('timer-toggle-btn').innerText = `⏱️ ${cameraTimer}S`;
 
 try {
 stream = await navigator.mediaDevices.getUserMedia({
@@ -749,6 +786,15 @@ showAlert('Please allow camera access 🥺');
 }
 
 function toggleCamera() { isFacingUser = !isFacingUser; startCamera(); }
+
+// สลับเวลานับถอยหลัง
+function toggleTimer() {
+  playSfx('beep');
+  if (cameraTimer === 3) cameraTimer = 5;
+  else if (cameraTimer === 5) cameraTimer = 10;
+  else cameraTimer = 3;
+  $('timer-toggle-btn').innerText = `⏱️ ${cameraTimer}S`;
+}
 
 function startPreviewLoop() {
 if (previewRAF) cancelAnimationFrame(previewRAF);
@@ -812,15 +858,18 @@ if (isShooting) return;
 isShooting = true;
 playSfx('beep');
 $('tap-to-shoot-hint').classList.add('hidden');
-let count = 5;
+let count = cameraTimer; // ⏳ ใช้ค่าที่ผู้ใช้เลือก
 $('countdown-display').classList.remove('hidden');
 $('countdown-text').innerText = count;
 
-const iv = setInterval(() => {
+if (shootInterval) clearInterval(shootInterval);
+
+shootInterval = setInterval(() => {
 count--;
 if (count > 0) { $('countdown-text').innerText = count; playSfx('beep'); }
 else {
-clearInterval(iv); $('countdown-display').classList.add('hidden');
+clearInterval(shootInterval); shootInterval = null;
+$('countdown-display').classList.add('hidden');
 captureSingleFrame();
 }
 }, 1000);
@@ -1063,7 +1112,14 @@ if(!obj.error) { finalGifUrl = obj.image; $('gif-controls').classList.remove('hi
 } catch(e) {}
 }
 
-function init() { renderModeSelection(); initCarouselSwipe(); initPanEvents(); renderFilters(); preloadAssets(); }
+function init() { 
+  renderModeSelection(); 
+  initCarouselSwipe(); 
+  initPanEvents(); 
+  renderFilters(); 
+  preloadAssets(); 
+  initIdleTimer(); // ⏱️ เริ่มต้นระบบนับเวลาจับจอ
+}
 
 function preloadAssets() {
 [...FRAMES.map(f => f.mask).filter(Boolean), ...FRAMES.map(f => f.overlay).filter(Boolean)].forEach(url => {
@@ -1179,6 +1235,48 @@ forceHardReset(); currentMode = 'multi'; activeLayouts = []; carouselIndex = 0; 
 const zs = $('review-zoom-slider'); if (zs) zs.value = 1; $('final-image').src = '';
 const gifCtrl = $('gif-controls'); if (gifCtrl) { gifCtrl.classList.add('hidden', 'opacity-0'); gifCtrl.classList.remove('opacity-100'); }
 navigate('HOME');
+}
+
+// ================= IDLE TIMEOUT (SCREENSAVER) =================
+let idleTimeout = null;
+const IDLE_TIME_MS = 60000; // 60 วินาที
+
+function initIdleTimer() {
+  resetIdleTimer();
+  ['touchstart', 'click', 'mousemove', 'keydown'].forEach(evt => {
+    document.addEventListener(evt, handleUserInteraction);
+  });
+}
+
+function handleUserInteraction() {
+  const ss = $('screensaver');
+  if (!ss.classList.contains('hidden')) {
+    hideScreensaver();
+  } else {
+    resetIdleTimer();
+  }
+}
+
+function resetIdleTimer() {
+  if (idleTimeout) clearTimeout(idleTimeout);
+  idleTimeout = setTimeout(showScreensaver, IDLE_TIME_MS);
+}
+
+function showScreensaver() {
+  const ss = $('screensaver');
+  if (!ss.classList.contains('hidden')) return;
+  resetApp(); // กลับหน้าหลักและเคลียร์ข้อมูลค้างทั้งหมด
+  ss.classList.remove('hidden');
+  ss.classList.add('flex');
+}
+
+function hideScreensaver() {
+  const ss = $('screensaver');
+  if (ss.classList.contains('hidden')) return;
+  playSfx('beep');
+  ss.classList.add('hidden');
+  ss.classList.remove('flex');
+  resetIdleTimer();
 }
 
 init();
