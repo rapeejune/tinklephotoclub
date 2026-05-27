@@ -108,37 +108,27 @@ border-radius: 99px; background: #f2ede9; color: #b5a7ab; transition: all 0.2s; 
 .clickable-card { cursor: pointer; transition: transform 0.1s, opacity 0.2s; }
 .clickable-card:active { transform: scale(0.95); opacity: 0.8; }
 
-/* ============================================
-   CAMERA PREVIEW — TRUE MASK COMPOSITING
-   ============================================ */
 #camera-viewport {
 position: relative;
 overflow: hidden;
-background: #000;
+background: transparent; 
 border: 3px solid #444;
 border-radius: 4px;
 width: 100%;
 }
-
-/* The canvas that shows MASK-COMPOSITED live preview */
 #preview-canvas {
 display: block;
 width: 100%;
 height: 100%;
-object-fit: contain;
+/* No object-fit here, drawing is manually controlled */
 }
-
-/* Hidden video used as source only */
 #camera-video {
 display: none;
 }
-
-/* Review containers — mask via CSS mask-image */
 .review-photo-container {
 position: relative;
-background-color: #e5e7eb;
+background-color: transparent; 
 transform: translateZ(0);
-overflow: hidden;
 }
 </style>
 </head>
@@ -266,15 +256,13 @@ overflow: hidden;
 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/><path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><circle cx="12" cy="12" r="3"/><path d="m18 22-3-3 3-3"/><path d="m6 2 3 3-3 3"/></svg>
 </button>
 
-<!-- THE COMPOSITED LIVE PREVIEW AREA -->
-<div id="camera-viewport-container" class="w-full max-w-[260px] flex flex-col items-center justify-center cursor-pointer" onclick="startShootingSequence()">
-<div id="camera-viewport" style="aspect-ratio:3/4;">
-<!-- Hidden video source -->
+<!-- ISOLATED CAMERA VIEWPORT: Canvas ตรงๆ ไม่มี CSS Mask เพื่อการควบคุม Render 100% -->
+<div id="camera-viewport-container" class="w-full max-w-[260px] flex justify-center items-center relative" onclick="startShootingSequence()">
+<div id="camera-viewport">
 <video id="camera-video" autoplay playsinline muted></video>
-<!-- Composited preview canvas — shows ONLY inside mask shapes with dark overlay outside -->
-<canvas id="preview-canvas"></canvas>
+<!-- THE ONLY RENDER CANVAS FOR LIVE PREVIEW -->
+<canvas id="preview-canvas" class="block w-full h-full object-contain"></canvas>
 
-<!-- Overlay HUD -->
 <div class="absolute top-0 left-0 w-full px-2 py-1 flex justify-between items-start z-20 pointer-events-none bg-gradient-to-b from-black/60 to-transparent">
 <span id="camera-filter-badge" class="px-1.5 py-0.5 rounded text-[8px] font-bold text-white border border-white/20 uppercase tracking-wider backdrop-blur-sm">NORMAL</span>
 <span id="shot-counter-text" class="text-[9px] font-black text-white drop-shadow-md bg-pink-500/90 px-2 py-0.5 rounded-full">SHOT 1/4</span>
@@ -352,16 +340,15 @@ overflow: hidden;
 <div class="toy-hidden-area"></div>
 </div>
 
-</div><!-- end app-container -->
+</div>
 
 <script>
 // ==========================================
-// TINKLE PHOTO CLUB v23.0 — REBUILT RENDERING ENGINE
-// TRUE ALPHA MASK COMPOSITING — NO RECTANGLE FALLBACK EVER
-// Master coordinate: 1200x1800 (portrait) | 1800x1200 (landscape)
+// TINKLE PHOTO CLUB v42.0 — THE MASTER ARCHITECTURE
+// One Single Render Function for Preview & Export.
+// True Mask Interpretation: Black = Camera, White/Transparent = Erase.
+// No Blob Runtime. Pure Strict Geometry.
 // ==========================================
-
-const SAFE_PADDING_SCALE = 0.92; // safe breathing room inside mask
 
 function showAlert(msg) {
   const modal = document.getElementById('custom-alert');
@@ -369,6 +356,7 @@ function showAlert(msg) {
   modal.classList.remove('hidden'); modal.classList.add('flex');
 }
 
+// 📌 1. Master Coordinate System (Source of Truth 100%)
 const MASTER_CANVAS = {
   PORTRAIT:  { w: 1200, h: 1800 },
   LANDSCAPE: { w: 1800, h: 1200 }
@@ -379,81 +367,41 @@ const LAYOUTS = [
     id: 'classic_3cut', mode: 'multi', name: '2x6" 3 PHOTO', desc: 'Classic 3-Cut Strip', type: 'twin-strip',
     orientation: 'portrait', canvas: 'PORTRAIT', shots: 3,
     icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="14" y="6" width="12" height="8" rx="0.5"/><rect x="14" y="16" width="12" height="8" rx="0.5"/><rect x="14" y="26" width="12" height="8" rx="0.5"/></svg>`,
-    safeMargin: 0, cutGuide: true,
     slots: [ {x:0,y:0,w:600,h:600}, {x:0,y:600,w:600,h:600}, {x:0,y:1200,w:600,h:600} ]
   },
   {
     id: 'classic_4cut', mode: 'multi', name: '2x6" 4 PHOTO', desc: 'Classic 4-Cut Strip', type: 'twin-strip',
     orientation: 'portrait', canvas: 'PORTRAIT', shots: 4,
     icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="14" y="4" width="12" height="6" rx="0.5"/><rect x="14" y="12" width="12" height="6" rx="0.5"/><rect x="14" y="20" width="12" height="6" rx="0.5"/><rect x="14" y="28" width="12" height="6" rx="0.5"/></svg>`,
-    safeMargin: 0, cutGuide: true,
     slots: [ {x:0,y:0,w:600,h:450}, {x:0,y:450,w:600,h:450}, {x:0,y:900,w:600,h:450}, {x:0,y:1350,w:600,h:450} ]
   },
   {
     id: 'single_portrait', mode: 'multi', name: '4x6" PORTRAIT', desc: 'Single Portrait', type: 'full-sheet',
     orientation: 'portrait', canvas: 'PORTRAIT', shots: 1,
     icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="8" y="6" width="24" height="22" rx="0.5"/></svg>`,
-    safeMargin: 0, cutGuide: false,
     slots: [ {x:0,y:0,w:1200,h:1800} ]
   },
   {
     id: 'single_landscape', mode: 'multi', name: '4x6" LANDSCAPE', desc: 'Single Landscape', type: 'full-sheet',
     orientation: 'landscape', canvas: 'LANDSCAPE', shots: 1,
     icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="4" y="10" width="32" height="16" rx="0.5"/></svg>`,
-    safeMargin: 0, cutGuide: false,
     slots: [ {x:0,y:0,w:1800,h:1200} ]
   },
   {
     id: 'mini_4_sticker', mode: 'single', name: '4 MINI STICKERS', desc: 'Mini Sticker Sheet', type: 'multiprint',
     orientation: 'portrait', canvas: 'PORTRAIT', shots: 1,
     icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="8" y="8" width="10" height="10" rx="1"/><rect x="22" y="8" width="10" height="10" rx="1"/><rect x="8" y="22" width="10" height="10" rx="1"/><rect x="22" y="22" width="10" height="10" rx="1"/></svg>`,
-    safeMargin: 0, cutGuide: false,
     slots: [ {x:0,y:0,w:600,h:900}, {x:600,y:0,w:600,h:900}, {x:0,y:900,w:600,h:900}, {x:600,y:900,w:600,h:900} ]
   }
 ];
 
-// ==========================================
-// STRICT 1:1 FILE NAME MAPPING (exact GitHub filenames)
-// overlay = frame PNG on top of photos
-// mask    = *_mark.png used ONLY for clipping — NEVER shown in output
-// ==========================================
 const FRAMES = [
-  {
-    id: 'black_angel', name: 'Black Angel', category: 'special',
-    supportedLayouts: ['single_landscape'],
-    overlay: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/black%20angel.png',
-    mask:    'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/black%20angel_mark.png'
-  },
-  {
-    id: 'lucky', name: 'Lucky', category: 'special',
-    supportedLayouts: ['single_portrait'],
-    overlay: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/Lucky.png',
-    mask:    'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/Lucky_mark.png'
-  },
-  {
-    id: 'blue_heart', name: 'Blue Heart', category: 'special',
-    supportedLayouts: ['single_portrait'],
-    overlay: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/Blue%20heart.png',
-    mask:    'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/Blue%20heart_mark.png'
-  },
-  {
-    id: 'hbd', name: 'HBD', category: 'special',
-    supportedLayouts: ['classic_3cut'],
-    overlay: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/HBD.png',
-    mask:    'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/HBD_mark.png'
-  },
-  {
-    id: 'pink_heart', name: 'Pink Heart', category: 'special',
-    supportedLayouts: ['classic_4cut'],
-    overlay: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/pink%20heart.png',
-    mask:    'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/pink%20heart_mark.png'
-  },
-  {
-    id: 'no_bad', name: 'No Bad', category: 'special',
-    supportedLayouts: ['classic_4cut'],
-    overlay: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/no%20bad.png',
-    mask:    'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/no%20bad_mark.png'
-  }
+  { id: 'black_angel', name: 'Black Angel', category: 'special', supportedLayouts: ['single_landscape'], overlay: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/black%20angel.png', mask: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/black%20angel_mark.png' },
+  { id: 'lucky', name: 'Lucky', category: 'special', supportedLayouts: ['single_portrait'], overlay: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/Lucky.png', mask: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/Lucky_mark.png' },
+  { id: 'blue_heart', name: 'Blue Heart', category: 'special', supportedLayouts: ['single_portrait'], overlay: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/Blue%20heart.png', mask: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/Blue%20heart_mark.png' },
+  { id: 'hbd', name: 'HBD', category: 'special', supportedLayouts: ['classic_3cut'], overlay: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/HBD.png', mask: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/HBD_mark.png' },
+  { id: 'pink_heart', name: 'Pink Heart', category: 'special', supportedLayouts: ['classic_4cut'], overlay: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/pink%20heart.png', mask: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/pink%20heart_mark.png' },
+  { id: 'no_bad', name: 'No Bad', category: 'special', supportedLayouts: ['classic_4cut'], overlay: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/no%20bad.png', mask: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/no%20bad_mark.png' }
 ];
 
 const FILTERS = [
@@ -464,43 +412,23 @@ const FILTERS = [
 ];
 const CATEGORIES = ['special'];
 
-// ==========================================
-// STATE
-// ==========================================
-let currentMode      = 'multi';
-let activeLayouts    = [];
-let carouselIndex    = 0;
-let currentLayout    = null;
-let currentFrame     = null;
-let currentFilter    = FILTERS[0];
-let availableFrames  = [];
-let stream           = null;
-let isFacingUser     = true;
+// 📌 3. State Management
+let currentMode = 'multi', activeLayouts = [], carouselIndex = 0;
+let currentLayout = null, currentFrame = null, currentFilter = FILTERS[0];
+let availableFrames = [], stream = null, isFacingUser = true;
 
-let activePhotoIndex   = 0;
-let photoTransforms    = [];
-let capturedPhotos     = [];
-let retakeTargetIndex  = -1;
-let finalComposedUrl   = null;
-let finalGifUrl        = null;
-let isShooting         = false;
-let isDragging         = false;
+let activePhotoIndex = 0, photoTransforms = [], capturedPhotos = [];
+let retakeTargetIndex = -1, finalComposedUrl = null, finalGifUrl = null;
+let isShooting = false, isDragging = false;
 let startX = 0, startY = 0, currentX = 0, currentY = 0;
 
-let dynamicSlots       = null;
-const slotMaskCache    = {};
-
-// Preview RAF loop
-let previewRAF         = null;
-let previewMaskImages  = []; // HTMLImageElement[] per slot for preview compositing
+let slotAssetsData = []; // เก็บ Data URL & Images ของ Mask และ Overlay ประจำช่อง
+let previewRAF = null;
 
 const $ = id => document.getElementById(id);
-
-// ==========================================
-// AUDIO
-// ==========================================
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
 let audioCtx;
+
 function playSfx(type) {
   if (!audioCtx) audioCtx = new AudioCtx();
   const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
@@ -519,243 +447,155 @@ function playSfx(type) {
   }
 }
 
-// ==========================================
-// IMAGE LOADER (with CORS + blob cache)
-// ==========================================
-// Simple direct loader — no blob/cache wrapper that breaks crossOrigin
 const loadImage = (src) => {
   return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload  = () => resolve(img);
-    img.onerror = (e) => {
-      console.error('Image load failed:', src, e);
-      reject(new Error('Failed: ' + src));
-    };
-    // Add cache-busting only for raw.githubusercontent URLs if needed
+    const img = new Image(); img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img); img.onerror = e => reject(e);
     img.src = src;
   });
 };
 
-// Keep fetchAndCache as no-op (direct URL works fine with CORS *)
-async function fetchAndCache(url) { return url; }
+// 📌 4. FULL HARD RESET (ล้างตรรกะและ State เก่าทั้งหมด)
+function forceHardReset() {
+  capturedPhotos = []; photoTransforms = []; retakeTargetIndex = -1;
+  activePhotoIndex = 0; isShooting = false; slotAssetsData = [];
+  
+  const cCanvas = $('preview-canvas');
+  if (cCanvas) { const ctx = cCanvas.getContext('2d'); ctx.clearRect(0,0, cCanvas.width, cCanvas.height); }
+  const container = $('camera-viewport');
+  if (container) container.style.aspectRatio = '';
+}
 
-// ==========================================
-// MASK SCANNER — TRUE ALPHA FROM *_mark.png
-// Scans ONLY pure-black opaque pixels as the clip shape.
-// Returns per-slot data with shapeBounds + trueAlphaMask dataURL.
-// ==========================================
-async function calculateDynamicSlots(frame, layout) {
-  if (!frame || !frame.mask) {
-    return layout.slots.map(s => ({ ...s, shapeBounds: {x:0,y:0,w:s.w,h:s.h}, trueAlphaMask: null }));
-  }
+// 📌 5. THE ULTIMATE SLICER (ตัดพิกัดตายตัว ไม่มีแสกน Contour แบบสุ่ม)
+// ตีความ Alpha: รูเจาะ(สีดำ) = เก็บไว้(Alpha 255), รอบนอก = ลบทิ้ง(Alpha 0)
+async function extractLayoutAssets() {
+  slotAssetsData = [];
+  if (!currentFrame || !currentLayout) return;
 
-  const cacheKey = `dynslots_${frame.id}_${layout.id}`;
-  if (slotMaskCache[cacheKey]) return slotMaskCache[cacheKey];
+  const master = MASTER_CANVAS[currentLayout.canvas];
+  let markImg, overlayImg;
+  try { 
+    if (currentFrame.mask) markImg = await loadImage(currentFrame.mask); 
+    if (currentFrame.overlay) overlayImg = await loadImage(currentFrame.overlay);
+  } catch(e) {}
 
-  const master = MASTER_CANVAS[layout.canvas];
-  let maskImg;
-  try { maskImg = await loadImage(frame.mask); }
-  catch(e) {
-    console.warn('Mask load failed:', e);
-    return layout.slots.map(s => ({ ...s, shapeBounds: {x:0,y:0,w:s.w,h:s.h}, trueAlphaMask: null }));
-  }
+  const mCanvas = document.createElement('canvas'); mCanvas.width = master.w; mCanvas.height = master.h;
+  const mCtx = mCanvas.getContext('2d');
+  if (markImg) mCtx.drawImage(markImg, 0, 0, master.w, master.h);
 
-  const newSlots = [];
+  const oCanvas = document.createElement('canvas'); oCanvas.width = master.w; oCanvas.height = master.h;
+  const oCtx = oCanvas.getContext('2d');
+  if (overlayImg) oCtx.drawImage(overlayImg, 0, 0, master.w, master.h);
 
-  for (let i = 0; i < layout.slots.length; i++) {
-    const slot = layout.slots[i];
-
-    // Sample the mask region for this slot
-    const sampleCanvas = document.createElement('canvas');
-    sampleCanvas.width = slot.w; sampleCanvas.height = slot.h;
-    const sctx = sampleCanvas.getContext('2d', { willReadFrequently: true });
-
-    // Map slot coordinates to mask image coordinates
-    const sx = (slot.x / master.w) * maskImg.width;
-    const sy = (slot.y / master.h) * maskImg.height;
-    const sw = (slot.w / master.w) * maskImg.width;
-    const sh = (slot.h / master.h) * maskImg.height;
-    sctx.drawImage(maskImg, sx, sy, sw, sh, 0, 0, slot.w, slot.h);
-
-    const imgData = sctx.getImageData(0, 0, slot.w, slot.h);
-    const data = imgData.data;
-
-    // Pass 1: Find tight bounding box of opaque dark pixels only
-    let minX = slot.w, minY = slot.h, maxX = 0, maxY = 0;
-    let hasShape = false;
-    for (let y = 0; y < slot.h; y++) {
-      for (let x = 0; x < slot.w; x++) {
-        const p = (y * slot.w + x) * 4;
-        const r = data[p], g = data[p+1], b = data[p+2], a = data[p+3];
-        // Pure black opaque = mask pixel
-        if (a > 100 && r < 80 && g < 80 && b < 80) {
-          hasShape = true;
-          if (x < minX) minX = x; if (x > maxX) maxX = x;
-          if (y < minY) minY = y; if (y > maxY) maxY = y;
-        }
-      }
-    }
-
-    if (!hasShape) {
-      // No mask shape found — use full slot, no masking
-      newSlots.push({ ...slot, shapeBounds: {x:0,y:0,w:slot.w,h:slot.h}, trueAlphaMask: null });
-      continue;
-    }
-
-    const tW = maxX - minX + 1;
-    const tH = maxY - minY + 1;
-
-    // Pass 2: Build true alpha mask canvas (black shape = opaque, else transparent)
-    const maskCanvas = document.createElement('canvas');
-    maskCanvas.width = tW; maskCanvas.height = tH;
-    const mctx = maskCanvas.getContext('2d');
-    const mImgData = mctx.createImageData(tW, tH);
-
-    for (let y = 0; y < tH; y++) {
-      for (let x = 0; x < tW; x++) {
-        const sp = ((y + minY) * slot.w + (x + minX)) * 4;
-        const dp = (y * tW + x) * 4;
-        const r = data[sp], g = data[sp+1], b = data[sp+2], a = data[sp+3];
-        if (a > 100 && r < 80 && g < 80 && b < 80) {
-          mImgData.data[dp]   = 0;
-          mImgData.data[dp+1] = 0;
-          mImgData.data[dp+2] = 0;
-          mImgData.data[dp+3] = a; // preserve soft edges
+  // สกัดทีละ Asset ทีละช่อง
+  function sliceAsset(canvas, sx, sy, sw, sh, isMask) {
+    if (!canvas) return null;
+    const sCanvas = document.createElement('canvas');
+    sCanvas.width = sw; sCanvas.height = sh;
+    const sCtx = sCanvas.getContext('2d');
+    sCtx.drawImage(canvas, sx, sy, sw, sh, 0, 0, sw, sh);
+    
+    if (isMask) {
+      const imgData = sCtx.getImageData(0, 0, sw, sh);
+      const data = imgData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
+        // THE TRUE RULE: พื้นที่สีดำ (Dark & Opaque) = รูที่ต้องเก็บไว้เป็น Alpha 255
+        // นอกนั้นให้โปร่งใสทั้งหมด!
+        if (a > 128 && (r < 128 && g < 128 && b < 128)) {
+          data[i] = 0; data[i+1] = 0; data[i+2] = 0; data[i+3] = 255; 
         } else {
-          mImgData.data[dp+3] = 0;
+          data[i+3] = 0;
         }
       }
+      sCtx.putImageData(imgData, 0, 0);
     }
-    mctx.putImageData(mImgData, 0, 0);
+    return sCanvas.toDataURL('image/png');
+  }
 
-    newSlots.push({
-      ...slot,
-      shapeBounds: { x: minX, y: minY, w: tW, h: tH },
-      trueAlphaMask: maskCanvas.toDataURL('image/png')
+  for (let i = 0; i < currentLayout.slots.length; i++) {
+    const slot = currentLayout.slots[i];
+    
+    const maskUrl = markImg ? sliceAsset(mCanvas, slot.x, slot.y, slot.w, slot.h, true) : null;
+    const overlayUrl = overlayImg ? sliceAsset(oCanvas, slot.x, slot.y, slot.w, slot.h, false) : null;
+    
+    let maskUrlRight = null, overlayUrlRight = null;
+    if (currentLayout.type === 'twin-strip') {
+       maskUrlRight = markImg ? sliceAsset(mCanvas, slot.x + (master.w / 2), slot.y, slot.w, slot.h, true) : null;
+       overlayUrlRight = overlayImg ? sliceAsset(oCanvas, slot.x + (master.w / 2), slot.y, slot.w, slot.h, false) : null;
+    }
+
+    slotAssetsData.push({
+       maskUrl, overlayUrl, maskUrlRight, overlayUrlRight,
+       maskImg: maskUrl ? await loadImage(maskUrl) : null,
+       overlayImg: overlayUrl ? await loadImage(overlayUrl) : null,
+       maskImgRight: maskUrlRight ? await loadImage(maskUrlRight) : null,
+       overlayImgRight: overlayUrlRight ? await loadImage(overlayUrlRight) : null
     });
   }
-
-  slotMaskCache[cacheKey] = newSlots;
-  return newSlots;
 }
 
-function getActiveSlots() {
-  return dynamicSlots || (currentLayout ? currentLayout.slots.map(s => ({
-    ...s, shapeBounds: {x:0,y:0,w:s.w,h:s.h}, trueAlphaMask: null
-  })) : []);
-}
+// 📌 6. THE UNIVERSAL RENDER PIPELINE (ใช้ตัวเดียวกันทั้ง Preview, Review และ Export)
+// ลำดับ: Clear ➔ วางรูป ➔ เจาะด้วย Destination-in ➔ ปิดทับด้วย Overlay
+function renderSlot(targetCtx, targetW, targetH, sourceElement, maskElement, overlayElement, transform, filterCss, isVideo) {
+  targetCtx.clearRect(0, 0, targetW, targetH);
+  
+  const srcW = isVideo ? sourceElement.videoWidth : sourceElement.width;
+  const srcH = isVideo ? sourceElement.videoHeight : sourceElement.height;
+  if (!srcW || !srcH) return;
 
-// ==========================================
-// LIVE PREVIEW COMPOSITING ENGINE
-// Draws per-frame: dark overlay → camera inside each mask shape
-// Uses requestAnimationFrame for smooth live feed
-// ==========================================
-function stopPreviewLoop() {
-  if (previewRAF) { cancelAnimationFrame(previewRAF); previewRAF = null; }
-}
+  const imgRatio = srcW / srcH, tgtRatio = targetW / targetH;
+  let drawW, drawH;
+  if (imgRatio > tgtRatio) { drawH = targetH; drawW = drawH * imgRatio; } 
+  else                     { drawW = targetW; drawH = drawW / imgRatio; }
 
-async function startPreviewLoop() {
-  stopPreviewLoop();
+  // 1. Draw Image
+  targetCtx.save();
+  targetCtx.translate(targetW / 2, targetH / 2);
+  if (filterCss && filterCss !== 'none') targetCtx.filter = filterCss;
 
-  const vid    = $('camera-video');
-  const canvas = $('preview-canvas');
-  if (!vid || !canvas) return;
-
-  // Pre-load trueAlphaMask images (tight-cropped to shapeBounds already)
-  previewMaskImages = [];
-  if (dynamicSlots) {
-    for (const slot of dynamicSlots) {
-      if (slot.trueAlphaMask) {
-        try { previewMaskImages.push(await loadImage(slot.trueAlphaMask)); }
-        catch(e) { previewMaskImages.push(null); }
-      } else {
-        previewMaskImages.push(null);
-      }
-    }
+  if (transform) {
+    // Parity กับหน้าจอ DOM (สมการแปลค่าเป็น %)
+    targetCtx.translate((transform.pctX || 0) * targetW, (transform.pctY || 0) * targetH);
+    targetCtx.scale(transform.zoom || 1, transform.zoom || 1);
   }
 
-  function getCurrentSlotIndex() {
-    if (retakeTargetIndex !== -1) return retakeTargetIndex;
-    return Math.min(capturedPhotos.length, (currentLayout ? currentLayout.shots : 1) - 1);
+  if (isVideo && isFacingUser) {
+    targetCtx.scale(-1, 1);
   }
 
-  function drawFrame() {
-    if (!vid.srcObject || vid.readyState < 2) {
-      previewRAF = requestAnimationFrame(drawFrame);
-      return;
-    }
+  targetCtx.drawImage(sourceElement, -drawW / 2, -drawH / 2, drawW, drawH);
+  targetCtx.restore();
 
-    const slots   = getActiveSlots();
-    const slotIdx = getCurrentSlotIndex();
-    const slot    = slots[slotIdx] || slots[0];
-    if (!slot) { previewRAF = requestAnimationFrame(drawFrame); return; }
-
-    const sW = slot.shapeBounds.w;
-    const sH = slot.shapeBounds.h;
-    const container = $('camera-viewport');
-    const maxW = container ? container.clientWidth : 260;
-    const scaleToFit = maxW / sW;
-    const cW = Math.round(sW * scaleToFit);
-    const cH = Math.round(sH * scaleToFit);
-
-    if (canvas.width !== cW || canvas.height !== cH) {
-      canvas.width  = cW;
-      canvas.height = cH;
-      canvas.style.width  = cW + 'px';
-      canvas.style.height = cH + 'px';
-      if (container) container.style.aspectRatio = `${sW}/${sH}`;
-    }
-
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, cW, cH);
-
-    const maskImg = previewMaskImages[slotIdx] || null;
-
-    // Capture current frame from video into an image-like canvas (handles mirror)
-    const vidCanvas = document.createElement('canvas');
-    vidCanvas.width  = vid.videoWidth  || 640;
-    vidCanvas.height = vid.videoHeight || 480;
-    const vCtx = vidCanvas.getContext('2d');
-    vCtx.save();
-    if (isFacingUser) { vCtx.translate(vidCanvas.width, 0); vCtx.scale(-1, 1); }
-    vCtx.drawImage(vid, 0, 0);
-    vCtx.restore();
-
-    // Use unified renderer — same pipeline as export
-    const transform = photoTransforms[slotIdx] || { zoom: 1, x: 0, y: 0 };
-    const rendered = renderSlotToCanvas(vidCanvas, maskImg, slot, transform, cW, cH, currentFilter.css);
-
-    // Black bg + rendered slot (transparent outside mask = black shows through)
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, cW, cH);
-    ctx.drawImage(rendered, 0, 0);
-
-    previewRAF = requestAnimationFrame(drawFrame);
+  // 2. Apply Alpha Mask using destination-in
+  if (maskElement) {
+    targetCtx.save();
+    targetCtx.globalCompositeOperation = 'destination-in';
+    targetCtx.drawImage(maskElement, 0, 0, targetW, targetH);
+    targetCtx.restore();
   }
 
-  drawFrame();
+  // 3. Draw Overlay Artwork
+  if (overlayElement) {
+    targetCtx.save();
+    targetCtx.globalCompositeOperation = 'source-over';
+    targetCtx.drawImage(overlayElement, 0, 0, targetW, targetH);
+    targetCtx.restore();
+  }
 }
 
-// ==========================================
-// NAVIGATION & CAMERA
-// ==========================================
+// ================= NAVIGATION =================
 function navigate(screenName) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   const screen = $('screen-' + screenName);
   if (screen) screen.classList.add('active');
 
-  if (screenName === 'FRAME') {
-    updateSelectedFrameUI();
-  } else if (screenName === 'CAMERA') {
-    dynamicSlots = null;
-    startCamera();
-  } else {
-    stopCamera();
-    if (screenName === 'REVIEW') {
-      activePhotoIndex = 0;
-      renderReview();
-    }
+  if (screenName === 'FRAME') updateSelectedFrameUI();
+  else if (screenName === 'CAMERA') startCamera();
+  else {
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    if (previewRAF) { cancelAnimationFrame(previewRAF); previewRAF = null; }
+    if (screenName === 'REVIEW') { activePhotoIndex = 0; renderReview(); }
   }
 }
 
@@ -766,93 +606,96 @@ function goBack(step) {
     case 'LAYOUT': navigate('MODE'); break;
     case 'FRAME':  navigate('LAYOUT'); break;
     case 'FILTER': navigate('FRAME'); break;
-    case 'CAMERA':
-      capturedPhotos = []; photoTransforms = []; retakeTargetIndex = -1; isShooting = false;
-      navigate('FILTER'); break;
-    case 'REVIEW':
-      capturedPhotos = []; photoTransforms = []; retakeTargetIndex = -1;
-      navigate('FILTER'); break;
+    case 'CAMERA': forceHardReset(); navigate('FILTER'); break;
+    case 'REVIEW': forceHardReset(); navigate('FILTER'); break;
   }
 }
 
+// 📌 7. TRUE ISOLATED CANVAS PREVIEW
+// Live Camera จะเรียกใช้ Universal renderSlot ทำให้ได้ผลลัพธ์เดียวกับตอน Export เป๊ะ
 async function startCamera() {
-  stopCamera();
-  if (!dynamicSlots) {
-    dynamicSlots = await calculateDynamicSlots(currentFrame, currentLayout);
-  }
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  
+  if (slotAssetsData.length === 0) await extractLayoutAssets();
+  
   updateCameraUI();
-
-  const fb = $('camera-filter-badge'); if (fb) fb.innerText = currentFilter.name;
-  const hint = $('tap-to-shoot-hint'); if (hint) hint.classList.remove('hidden');
+  $('camera-filter-badge').innerText = currentFilter.name;
+  $('tap-to-shoot-hint').classList.remove('hidden');
 
   try {
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: isFacingUser ? 'user' : 'environment', width: {ideal:1280}, height: {ideal:720} },
-      audio: false
+      video: { facingMode: isFacingUser ? 'user' : 'environment', width: {ideal:1280}, height: {ideal:720} }, audio: false
     });
     const vid = $('camera-video');
-    if (vid) {
-      vid.srcObject = stream;
-      await new Promise(resolve => {
-        if (vid.readyState >= 2) resolve();
-        else vid.onloadeddata = resolve;
-      });
-    }
-    // Start composited live preview
-    await startPreviewLoop();
+    vid.srcObject = stream;
+    await new Promise(res => { if (vid.readyState >= 2) res(); else vid.onloadeddata = res; });
+    startPreviewLoop();
   } catch(e) {
-    console.error('Camera error:', e);
     showAlert('Please allow camera access 🥺');
   }
 }
 
-function stopCamera() {
-  stopPreviewLoop();
-  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-}
-
 function toggleCamera() { isFacingUser = !isFacingUser; startCamera(); }
 
-function updateCameraUI() {
-  const slots = getActiveSlots();
-  if (!currentLayout || !slots) return;
-  const total = currentLayout.shots;
-  const cur = retakeTargetIndex !== -1 ? (retakeTargetIndex + 1) : (capturedPhotos.length + 1);
-  const sc = $('shot-counter-text');
-  if (sc) sc.innerText = retakeTargetIndex !== -1 ? `RETAKE SHOT ${cur}` : `SHOT ${cur}/${total}`;
-  const dots = $('shot-progress-dots');
-  if (dots) {
-    dots.innerHTML = '';
-    for (let i = 0; i < total; i++) {
-      const dot = document.createElement('div');
-      const active = retakeTargetIndex !== -1 ? (i === retakeTargetIndex) : (i < capturedPhotos.length);
-      dot.className = `w-2 h-2 rounded-full border border-gray-400 ${active ? 'bg-[#ff4d9a] border-[#ff4d9a]' : 'bg-transparent'}`;
-      dots.appendChild(dot);
+function startPreviewLoop() {
+  if (previewRAF) cancelAnimationFrame(previewRAF);
+  const vid = $('camera-video'); const canvas = $('preview-canvas');
+  if (!vid || !canvas) return;
+
+  function drawFrame() {
+    if (!vid.srcObject || vid.readyState < 2) {
+      previewRAF = requestAnimationFrame(drawFrame); return;
     }
+    
+    const slotIdx = retakeTargetIndex !== -1 ? retakeTargetIndex : Math.min(capturedPhotos.length, currentLayout.shots - 1);
+    const slot = currentLayout.slots[slotIdx];
+    const assets = slotAssetsData[slotIdx];
+    if (!slot) return;
+
+    const cW = slot.w; const cH = slot.h;
+    const container = $('camera-viewport');
+    if (container) container.style.aspectRatio = `${cW}/${cH}`;
+
+    if (canvas.width !== cW || canvas.height !== cH) {
+      canvas.width = cW; canvas.height = cH;
+    }
+
+    const ctx = canvas.getContext('2d');
+    
+    // โยนเข้า Universal Render!
+    renderSlot(ctx, cW, cH, vid, assets ? assets.maskImg : null, assets ? assets.overlayImg : null, null, currentFilter.css, true);
+
+    previewRAF = requestAnimationFrame(drawFrame);
+  }
+  drawFrame();
+}
+
+function updateCameraUI() {
+  if (!currentLayout) return;
+  const cur = retakeTargetIndex !== -1 ? (retakeTargetIndex + 1) : (capturedPhotos.length + 1);
+  $('shot-counter-text').innerText = retakeTargetIndex !== -1 ? `RETAKE SHOT ${cur}` : `SHOT ${cur}/${currentLayout.shots}`;
+  
+  const dots = $('shot-progress-dots'); dots.innerHTML = '';
+  for (let i = 0; i < currentLayout.shots; i++) {
+    const active = retakeTargetIndex !== -1 ? (i === retakeTargetIndex) : (i < capturedPhotos.length);
+    dots.innerHTML += `<div class="w-2 h-2 rounded-full border border-gray-400 ${active ? 'bg-[#ff4d9a] border-[#ff4d9a]' : 'bg-transparent'}"></div>`;
   }
 }
 
-// ==========================================
-// SHOOTING SEQUENCE
-// ==========================================
 function startShootingSequence() {
   if (isShooting) return;
   isShooting = true;
-  startCountdown();
-}
-
-function startCountdown() {
   playSfx('beep');
-  const hint = $('tap-to-shoot-hint'); if (hint) hint.classList.add('hidden');
+  $('tap-to-shoot-hint').classList.add('hidden');
   let count = 5;
-  const cd = $('countdown-display'); if (cd) cd.classList.remove('hidden');
-  const ct = $('countdown-text'); if (ct) ct.innerText = count;
+  $('countdown-display').classList.remove('hidden');
+  $('countdown-text').innerText = count;
+  
   const iv = setInterval(() => {
     count--;
-    if (count > 0) { if (ct) ct.innerText = count; playSfx('beep'); }
+    if (count > 0) { $('countdown-text').innerText = count; playSfx('beep'); }
     else {
-      clearInterval(iv);
-      if (cd) cd.classList.add('hidden');
+      clearInterval(iv); $('countdown-display').classList.add('hidden');
       captureSingleFrame();
     }
   }, 1000);
@@ -861,653 +704,310 @@ function startCountdown() {
 function captureSingleFrame() {
   playSfx('shutter');
   const fl = $('camera-flash');
-  if (fl) { fl.classList.remove('hidden'); setTimeout(() => fl.classList.add('hidden'), 400); }
+  fl.classList.remove('hidden'); setTimeout(() => fl.classList.add('hidden'), 400);
 
   const vid = $('camera-video');
-  if (vid && vid.readyState === vid.HAVE_ENOUGH_DATA) {
-    const canvas = document.createElement('canvas');
-    canvas.width = vid.videoWidth || 1280;
-    canvas.height = vid.videoHeight || 720;
-    const ctx = canvas.getContext('2d');
-    ctx.save();
-    if (isFacingUser) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
-    ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
-    ctx.restore();
-    const raw = canvas.toDataURL('image/jpeg', 0.92);
+  const canvas = document.createElement('canvas');
+  canvas.width = vid.videoWidth || 1280; canvas.height = vid.videoHeight || 720;
+  const ctx = canvas.getContext('2d');
+  ctx.save();
+  if (isFacingUser) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
+  ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+  ctx.restore();
+  
+  const raw = canvas.toDataURL('image/jpeg', 0.92);
 
-    if (retakeTargetIndex !== -1) {
-      capturedPhotos[retakeTargetIndex] = raw;
-      photoTransforms[retakeTargetIndex] = {zoom:1, x:0, y:0};
-      retakeTargetIndex = -1; isShooting = false;
-      setTimeout(() => renderReview(), 1000);
-      navigate('REVIEW');
-    } else {
-      capturedPhotos.push(raw);
-      photoTransforms.push({zoom:1, x:0, y:0});
-      updateCameraUI();
-      if (capturedPhotos.length < currentLayout.shots) {
-        setTimeout(() => startCountdown(), 1500);
-      } else {
-        isShooting = false;
-        setTimeout(() => renderReview(), 1000);
-        navigate('REVIEW');
-      }
-    }
+  if (retakeTargetIndex !== -1) {
+    capturedPhotos[retakeTargetIndex] = raw; photoTransforms[retakeTargetIndex] = {zoom:1, pctX:0, pctY:0};
+    retakeTargetIndex = -1; isShooting = false;
+    setTimeout(() => { navigate('REVIEW'); }, 1000);
   } else {
-    isShooting = false;
+    capturedPhotos.push(raw); photoTransforms.push({zoom:1, pctX:0, pctY:0});
+    updateCameraUI();
+    if (capturedPhotos.length < currentLayout.shots) { 
+      // 🌟 ให้จังหวะพัก 1 วิ เพื่อให้พรีวิวสลับไปช่องถัดไปอย่างเนียนๆ ก่อนนับถอยหลัง
+      setTimeout(() => { isShooting = false; startShootingSequence(); }, 1000); 
+    } else {
+      isShooting = false;
+      setTimeout(() => { navigate('REVIEW'); }, 1000);
+    }
   }
 }
 
-// ==========================================
-// REVIEW SCREEN
-// ==========================================
+// 📌 8. DOM-BASED REVIEW PAN/ZOOM (เก็บสเกลเป็นเปอร์เซ็นต์ เพื่อให้ใช้ใน Canvas ได้อย่างแม่นยำ)
 function updateReviewZoom(val) {
   if (!photoTransforms[activePhotoIndex]) return;
   photoTransforms[activePhotoIndex].zoom = parseFloat(val);
-  // Redraw review canvas for active slot
-  const slot = dynamicSlots ? (dynamicSlots[activePhotoIndex] || dynamicSlots[0]) : null;
-  if (!slot || !reviewCanvases[activePhotoIndex]) return;
-  const displayPhotos = currentLayout.type === 'multiprint' ? [capturedPhotos[0]] : capturedPhotos;
-  const raw = displayPhotos[activePhotoIndex];
-  if (!raw) return;
-  loadImage(raw).then(img => {
-    // Get mask image from cache (load from slot data)
-    const tm = slot.trueAlphaMask;
-    const getMask = tm ? loadImage(tm) : Promise.resolve(null);
-    getMask.then(maskImg => {
-      drawReviewCanvas(activePhotoIndex, img, slot, maskImg);
-    });
-  });
+  updateReviewTransform();
 }
 
 function initPanEvents() {
-  // Pan/drag is now handled per-slot inside initReviewDragAndPinch()
-  // called from renderReview() after canvases are created.
+  let currentPctX = 0, currentPctY = 0;
+
+  document.addEventListener('pointerdown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+    const container = e.target.closest('.review-photo-container');
+    if (container) {
+      activePhotoIndex = parseInt(container.dataset.idx); renderReview();
+      isDragging = true; startX = e.clientX; startY = e.clientY;
+      currentPctX = photoTransforms[activePhotoIndex].pctX || 0;
+      currentPctY = photoTransforms[activePhotoIndex].pctY || 0;
+      try { container.setPointerCapture(e.pointerId); } catch(err) {} e.preventDefault();
+    }
+  });
+  document.addEventListener('pointermove', (e) => {
+    if (!isDragging) return;
+    const container = document.querySelector(`.review-photo-container[data-idx="${activePhotoIndex}"]`);
+    const rect = container.getBoundingClientRect();
+    
+    // แปลงการขยับนิ้วให้เป็น % ของกรอบ
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    photoTransforms[activePhotoIndex].pctX = currentPctX + (dx / rect.width);
+    photoTransforms[activePhotoIndex].pctY = currentPctY + (dy / rect.height);
+    
+    updateReviewTransform();
+  });
+  document.addEventListener('pointerup', () => isDragging = false);
+  document.addEventListener('pointercancel', () => isDragging = false);
 }
 
-// Review canvas cache: idx → HTMLCanvasElement
-const reviewCanvases = {};
-
-async function renderReview() {
-  const c = $('review-grid-container'); if (!c) return;
-  c.innerHTML = '';
-  if (capturedPhotos.length === 0) {
-    c.innerHTML = '<div class="col-span-2 text-center text-sm text-gray-500 py-8">No photos yet</div>';
-    return;
+function updateReviewTransform() {
+  const img = $(`review-img-${activePhotoIndex}`);
+  if (img) {
+    const t = photoTransforms[activePhotoIndex];
+    img.style.transform = `translate(-50%, -50%) translate(${t.pctX * 100}%, ${t.pctY * 100}%) scale(${t.zoom})`;
   }
-  if (!dynamicSlots) dynamicSlots = await calculateDynamicSlots(currentFrame, currentLayout);
+}
+
+function renderReview() {
+  const c = $('review-grid-container'); c.innerHTML = '';
+  if (capturedPhotos.length === 0) return;
 
   const displayPhotos = currentLayout.type === 'multiprint' ? [capturedPhotos[0]] : capturedPhotos;
-  c.className = displayPhotos.length === 1
-    ? 'flex flex-col items-center justify-center w-full'
-    : 'grid grid-cols-2 gap-4 w-full';
-
-  // Pre-load mask images for review canvases
-  const reviewMaskImgs = [];
-  for (let i = 0; i < dynamicSlots.length; i++) {
-    const tm = dynamicSlots[i].trueAlphaMask;
-    if (tm) { try { reviewMaskImgs.push(await loadImage(tm)); } catch(e) { reviewMaskImgs.push(null); } }
-    else reviewMaskImgs.push(null);
-  }
+  c.className = displayPhotos.length === 1 ? 'flex flex-col items-center justify-center w-full' : 'grid grid-cols-2 gap-4 w-full';
 
   for (let idx = 0; idx < displayPhotos.length; idx++) {
-    const raw  = displayPhotos[idx];
-    const slot = dynamicSlots[idx] || dynamicSlots[0];
-    const ratio = slot.shapeBounds.w / slot.shapeBounds.h;
-    if (!photoTransforms[idx]) photoTransforms[idx] = {zoom:1, x:0, y:0};
+    const raw = displayPhotos[idx];
+    const slot = currentLayout.slots[idx];
+    const assets = slotAssetsData[idx];
+    if (!photoTransforms[idx]) photoTransforms[idx] = {zoom:1, pctX:0, pctY:0};
+    const t = photoTransforms[idx];
     const isActive = idx === activePhotoIndex;
 
-    const wrapper = document.createElement('div');
-    wrapper.className = `relative shadow-md transition-all ${isActive ? 'scale-[1.02] z-10' : ''} ${displayPhotos.length === 1 ? 'w-[240px] max-w-full' : 'w-full'}`;
-    wrapper.style.aspectRatio = `${ratio}`;
-    wrapper.style.boxShadow = isActive ? '0 0 0 4px #ff4d9a, 0 4px 20px rgba(255,77,154,0.3)' : '0 0 0 3px #f2ede9';
-    wrapper.style.borderRadius = '8px';
-    wrapper.style.overflow = 'hidden';
-    wrapper.style.cursor = 'move';
+    const w = document.createElement('div');
+    w.dataset.idx = idx;
+    w.className = `review-photo-container shadow-md cursor-move touch-none transition-all ${isActive ? 'scale-[1.02] z-10' : ''} ${displayPhotos.length === 1 ? 'w-[240px] max-w-full' : 'w-full'}`;
+    w.style.boxShadow = isActive ? '0 0 0 4px #ff4d9a' : '0 0 0 4px white';
+    w.style.aspectRatio = `${slot.w / slot.h}`;
 
-    // Canvas for this slot — renders using unified pipeline
-    const cnv = document.createElement('canvas');
-    cnv.style.width = '100%'; cnv.style.height = '100%';
-    cnv.style.display = 'block';
-    cnv.dataset.idx = idx;
-    reviewCanvases[idx] = cnv;
-    wrapper.appendChild(cnv);
+    // โชว์ Mask ผ่าน CSS Webkit
+    if (assets && assets.maskUrl) {
+      w.style.WebkitMaskImage = `url('${assets.maskUrl}')`; w.style.WebkitMaskSize = '100% 100%';
+      w.style.maskImage = `url('${assets.maskUrl}')`; w.style.maskSize = '100% 100%';
+    }
 
-    // Retake button overlay
-    const retakeDiv = document.createElement('div');
-    retakeDiv.className = 'absolute bottom-0 left-0 w-full flex justify-center pb-2 pt-6 z-20 pointer-events-none';
-    retakeDiv.style.background = 'linear-gradient(to top, rgba(0,0,0,0.5), transparent)';
-    retakeDiv.innerHTML = `<button onclick="triggerRetake(${idx})" class="bg-white/90 backdrop-blur text-pink-500 text-[10px] px-4 py-1.5 rounded-full shadow-lg font-black border-2 border-pink-200 pointer-events-auto active:scale-95 transition-transform uppercase tracking-wider">RETAKE 🔁</button>`;
-    wrapper.appendChild(retakeDiv);
+    const imgRatio = 1280 / 720, tgtRatio = slot.w / slot.h;
+    let cssW = '100%', cssH = '100%';
+    if (imgRatio > tgtRatio) cssW = `${(imgRatio / tgtRatio) * 100}%`;
+    else                     cssH = `${(tgtRatio / imgRatio) * 100}%`;
 
-    // Activate slot on tap
-    wrapper.addEventListener('pointerdown', (e) => {
-      if (e.target.tagName === 'BUTTON') return;
-      activePhotoIndex = idx;
-      // Update active ring on all wrappers
-      c.querySelectorAll('[data-slot-wrapper]').forEach((w, wi) => {
-        w.style.boxShadow = wi === idx
-          ? '0 0 0 4px #ff4d9a, 0 4px 20px rgba(255,77,154,0.3)'
-          : '0 0 0 3px #f2ede9';
-      });
-      const zs = $('review-zoom-slider');
-      if (zs) zs.value = photoTransforms[idx]?.zoom || 1;
-    });
-    wrapper.dataset.slotWrapper = idx;
-    wrapper.setAttribute('data-slot-wrapper', idx);
-
-    c.appendChild(wrapper);
-
-    // Draw initial canvas render
-    const img = await loadImage(raw);
-    await drawReviewCanvas(idx, img, slot, reviewMaskImgs[idx] || reviewMaskImgs[0]);
+    w.innerHTML = `
+      <div class="absolute inset-0 overflow-hidden touch-none" style="width:100%;height:100%;">
+        <img id="review-img-${idx}" src="${raw}" style="filter:${currentFilter.css}; position: absolute; top: 50%; left: 50%; width: ${cssW}; height: ${cssH}; transform: translate(-50%, -50%) translate(${t.pctX * 100}%, ${t.pctY * 100}%) scale(${t.zoom}); pointer-events:none; transform-origin:center;" alt=""/>
+      </div>
+      ${assets.overlayUrl ? `<img src="${assets.overlayUrl}" class="absolute inset-0 w-full h-full pointer-events-none" />` : ''}
+      <div class="absolute bottom-0 w-full bg-gradient-to-t from-black/60 to-transparent flex items-end justify-center pb-2 pt-6 z-20 pointer-events-none">
+        <button onclick="triggerRetake(${idx})" class="bg-white/90 backdrop-blur text-pink-500 text-[10px] px-4 py-1.5 rounded-full font-black border-2 border-pink-200 pointer-events-auto active:scale-95">RETAKE 🔁</button>
+      </div>`;
+    c.appendChild(w);
   }
-
-  const zs = $('review-zoom-slider');
-  if (zs) zs.value = photoTransforms[activePhotoIndex]?.zoom || 1;
-  initReviewDragAndPinch(displayPhotos, dynamicSlots, reviewMaskImgs);
+  const zs = $('review-zoom-slider'); if (zs) zs.value = photoTransforms[activePhotoIndex]?.zoom || 1;
 }
-
-// Draw a single review slot canvas using unified renderer
-async function drawReviewCanvas(idx, imgOrSrc, slot, maskImg) {
-  const cnv = reviewCanvases[idx]; if (!cnv) return;
-  const wrapper = cnv.parentElement; if (!wrapper) return;
-  const dW = wrapper.clientWidth  || slot.shapeBounds.w;
-  const dH = wrapper.clientHeight || slot.shapeBounds.h;
-  cnv.width  = dW; cnv.height = dH;
-
-  let img = imgOrSrc;
-  if (typeof imgOrSrc === 'string') img = await loadImage(imgOrSrc);
-
-  const transform = photoTransforms[idx] || {zoom:1, x:0, y:0};
-  const rendered  = renderSlotToCanvas(img, maskImg, slot, transform, dW, dH, currentFilter.css);
-
-  const ctx = cnv.getContext('2d');
-  ctx.clearRect(0, 0, dW, dH);
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0, 0, dW, dH);
-  ctx.drawImage(rendered, 0, 0);
-}
-
-// Per-slot drag + pinch gesture handling on review canvases
-function initReviewDragAndPinch(displayPhotos, slots, maskImgs) {
-  let dragActive = false, pinchActive = false;
-  let lastX = 0, lastY = 0;
-  let lastPinchDist = 0;
-  let activeIdx = 0;
-  let activeImg = null;
-  const imgCache = {};
-
-  async function getImg(idx) {
-    if (!imgCache[idx]) imgCache[idx] = await loadImage(displayPhotos[idx]);
-    return imgCache[idx];
-  }
-
-  async function redraw(idx) {
-    const slot    = slots[idx] || slots[0];
-    const maskImg = maskImgs[idx] || maskImgs[0];
-    const img     = await getImg(idx);
-    await drawReviewCanvas(idx, img, slot, maskImg);
-  }
-
-  document.querySelectorAll('[data-slot-wrapper]').forEach(wrapper => {
-    const idx = parseInt(wrapper.dataset.slotWrapper);
-
-    // ── DRAG ──
-    wrapper.addEventListener('pointerdown', async (e) => {
-      if (e.target.tagName === 'BUTTON') return;
-      activeIdx = idx;
-      dragActive = true;
-      lastX = e.clientX; lastY = e.clientY;
-      wrapper.setPointerCapture(e.pointerId);
-      e.preventDefault();
-    }, {passive: false});
-
-    wrapper.addEventListener('pointermove', async (e) => {
-      if (!dragActive || activeIdx !== idx) return;
-      const dx = e.clientX - lastX;
-      const dy = e.clientY - lastY;
-      lastX = e.clientX; lastY = e.clientY;
-      if (!photoTransforms[idx]) photoTransforms[idx] = {zoom:1, x:0, y:0};
-      photoTransforms[idx].x += dx;
-      photoTransforms[idx].y += dy;
-      await redraw(idx);
-    }, {passive: true});
-
-    wrapper.addEventListener('pointerup',     () => { dragActive = false; });
-    wrapper.addEventListener('pointercancel', () => { dragActive = false; });
-
-    // ── PINCH ZOOM ──
-    let touches = [];
-    wrapper.addEventListener('touchstart', (e) => {
-      touches = Array.from(e.touches);
-      if (touches.length === 2) {
-        pinchActive = true;
-        lastPinchDist = Math.hypot(
-          touches[0].clientX - touches[1].clientX,
-          touches[0].clientY - touches[1].clientY
-        );
-      }
-    }, {passive: true});
-
-    wrapper.addEventListener('touchmove', async (e) => {
-      if (!pinchActive || e.touches.length < 2) return;
-      const dist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      const delta = dist / lastPinchDist;
-      lastPinchDist = dist;
-      if (!photoTransforms[idx]) photoTransforms[idx] = {zoom:1, x:0, y:0};
-      photoTransforms[idx].zoom = Math.max(0.5, Math.min(4, photoTransforms[idx].zoom * delta));
-      const zs = $('review-zoom-slider');
-      if (zs && activePhotoIndex === idx) zs.value = photoTransforms[idx].zoom;
-      await redraw(idx);
-    }, {passive: true});
-
-    wrapper.addEventListener('touchend', () => { pinchActive = false; touches = []; });
-  });
-}
-
 function triggerRetake(index) { retakeTargetIndex = index; navigate('CAMERA'); }
 
-// ==========================================
-// EXPORT — TRUE ALPHA COMPOSITING PIPELINE
-// 1. White bg
-// 2. Per-slot: camera → destination-in mask → composite
-// 3. Overlay frame PNG on top
-// ==========================================
-// ============================================================
-// UNIFIED SLOT RENDERER — used by BOTH preview and export
-// Returns a canvas (outW x outH) with:
-//   - camera/photo cover-fitted into safe area
-//   - hard-clipped to trueAlphaMask via destination-in
-//   - user transform (scale/offsetX/offsetY) applied
-//   - fully transparent outside mask shape
-// ============================================================
-function renderSlotToCanvas(img, maskImg, slot, transform, outW, outH, filterCss) {
-  const sc = document.createElement('canvas');
-  sc.width = outW; sc.height = outH;
-  const ctx = sc.getContext('2d');
-
-  // Cover-fit image into safe area (SAFE_PADDING_SCALE of outW x outH)
-  const safeW = outW * SAFE_PADDING_SCALE;
-  const safeH = outH * SAFE_PADDING_SCALE;
-
-  const imgRatio = img.width / img.height;
-  const safeRatio = safeW / safeH;
-  let fitW, fitH;
-  if (imgRatio > safeRatio) { fitH = safeH; fitW = fitH * imgRatio; }
-  else                       { fitW = safeW; fitH = fitW / imgRatio; }
-
-  ctx.save();
-  ctx.translate(outW / 2 + (transform.x || 0), outH / 2 + (transform.y || 0));
-  ctx.scale(transform.zoom || 1, transform.zoom || 1);
-  if (filterCss && filterCss !== 'none') ctx.filter = filterCss;
-  ctx.drawImage(img, -fitW / 2, -fitH / 2, fitW, fitH);
-  ctx.restore();
-
-  // Hard clip to mask shape — destination-in removes all pixels outside mask
-  if (maskImg) {
-    ctx.globalCompositeOperation = 'destination-in';
-    ctx.drawImage(maskImg, 0, 0, outW, outH);
-    ctx.globalCompositeOperation = 'source-over';
-  }
-
-  return sc;
-}
-
-// Legacy compat shim (not used in new pipeline)
-function drawCoverFitImage(ctx, img, targetW, targetH, transform, uiScale) {
-  const imgRatio = img.width / img.height;
-  const tgtRatio = targetW / targetH;
-  let w, h;
-  if (imgRatio > tgtRatio) { h = targetH; w = h * imgRatio; }
-  else { w = targetW; h = w / imgRatio; }
-  ctx.save();
-  ctx.translate((transform.x || 0) * uiScale, (transform.y || 0) * uiScale);
-  ctx.scale(transform.zoom || 1, transform.zoom || 1);
-  ctx.drawImage(img, -w/2, -h/2, w, h);
-  ctx.restore();
-}
-
+// 📌 9. TRUE EXPORT PIPELINE (ไม่มีวาดแผ่นใหญ่ก่อน ทุกแผ่นโดนชำแหละ 100%)
 async function processFinalPrint() {
   document.body.style.cursor = 'wait';
   try {
     const master = MASTER_CANVAS[currentLayout.canvas];
-    const canvas = document.createElement('canvas');
-    canvas.width = master.w; canvas.height = master.h;
+    const canvas = document.createElement('canvas'); canvas.width = master.w; canvas.height = master.h;
     const ctx = canvas.getContext('2d');
-    const W = canvas.width, H = canvas.height;
+    
+    // 1. กระดาษแข็งแผ่นใหญ่ สีขาว
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, master.w, master.h);
 
-    // White background
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
-
-    let overlayImgObj = null;
+    let masterOverlayObj = null;
     if (currentFrame && currentFrame.overlay) {
-      try { overlayImgObj = await loadImage(currentFrame.overlay); } catch(e) { console.warn(e); }
+      try { masterOverlayObj = await loadImage(currentFrame.overlay); } catch(e) {}
     }
 
-    const previewContainer = document.querySelector('.review-photo-container');
-    const previewWidth = previewContainer ? previewContainer.clientWidth : 240;
     const imgs = await Promise.all(capturedPhotos.map(src => loadImage(src)));
-
-    // Pre-load mask images for compositing
-    const clipMaskImgs = {};
-    for (let i = 0; i < dynamicSlots.length; i++) {
-      const tm = dynamicSlots[i].trueAlphaMask;
-      if (tm && !clipMaskImgs[tm]) {
-        try { clipMaskImgs[tm] = await loadImage(tm); } catch(e) {}
-      }
-    }
-
-    // Master photo canvas (transparent bg so masks work correctly)
-    const photoCanvas = document.createElement('canvas');
-    photoCanvas.width = W; photoCanvas.height = H;
-    const photoCtx = photoCanvas.getContext('2d');
-
-    // Process all slots using UNIFIED renderSlotToCanvas
-    // Exact same pipeline as live preview — no rectangular fallback
-    currentLayout.slots.forEach((_, i) => {
+    
+    // 2. วางทีละช่อง (ใช้ Universal renderSlot วาดภาพ 1 ใบถ้วน)
+    for (let i = 0; i < currentLayout.slots.length; i++) {
       const imgIndex = currentLayout.type === 'multiprint' ? 0 : i;
-      if (imgIndex >= imgs.length || !dynamicSlots || !dynamicSlots[i]) return;
+      if (imgIndex >= imgs.length) continue;
+      
+      const slot = currentLayout.slots[i];
+      const transform = photoTransforms[imgIndex] || {zoom:1, pctX:0, pctY:0};
+      const assets = slotAssetsData[i];
 
-      const slot      = dynamicSlots[i];
-      const transform = photoTransforms[imgIndex] || {zoom:1, x:0, y:0};
-      const maskImg   = clipMaskImgs[slot.trueAlphaMask] || null;
-      const sW = slot.shapeBounds.w;
-      const sH = slot.shapeBounds.h;
+      // Left Render
+      const scLeft = document.createElement('canvas');
+      scLeft.width = slot.w; scLeft.height = slot.h;
+      const ctxLeft = scLeft.getContext('2d');
+      renderSlot(ctxLeft, slot.w, slot.h, imgs[imgIndex], assets.maskImg, null, transform, currentFilter.css, false);
+      ctx.drawImage(scLeft, slot.x, slot.y);
 
-      // Render slot — same function as preview, just at master canvas resolution
-      const rendered = renderSlotToCanvas(imgs[imgIndex], maskImg, slot, transform, sW, sH, currentFilter.css);
-
-      // Blit at correct position in master canvas
-      photoCtx.save();
-      photoCtx.drawImage(rendered, slot.x + slot.shapeBounds.x, slot.y + slot.shapeBounds.y);
-      photoCtx.restore();
-
-      // Mirror to right strip (twin-strip layouts)
+      // Right Render (Twin-Strip)
       if (currentLayout.type === 'twin-strip') {
-        photoCtx.save();
-        photoCtx.drawImage(rendered, slot.x + slot.shapeBounds.x + (W / 2), slot.y + slot.shapeBounds.y);
-        photoCtx.restore();
+        const scRight = document.createElement('canvas');
+        scRight.width = slot.w; scRight.height = slot.h;
+        const ctxRight = scRight.getContext('2d');
+        renderSlot(ctxRight, slot.w, slot.h, imgs[imgIndex], assets.maskImgRight || assets.maskImg, null, transform, currentFilter.css, false);
+        ctx.drawImage(scRight, slot.x + (master.w / 2), slot.y);
       }
-    });
-
-    ctx.drawImage(photoCanvas, 0, 0, W, H);
-
-    // Draw decorative frame on top — ALWAYS last before metadata
-    if (overlayImgObj) {
-      ctx.save();
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.drawImage(overlayImgObj, 0, 0, W, H);
-      ctx.restore();
     }
 
-    // Cut guide line for twin strips
+    // 3. ปิดท้ายความสวยงามด้วยการวาดลาย Frame Overlay แผ่นใหญ่ทับด้านบนสุด
+    if (masterOverlayObj) {
+      ctx.save(); ctx.globalCompositeOperation = 'source-over';
+      ctx.drawImage(masterOverlayObj, 0, 0, master.w, master.h); ctx.restore();
+    }
+
     if (currentLayout.cutGuide && currentLayout.type === 'twin-strip') {
-      ctx.setLineDash([20, 20]);
-      ctx.strokeStyle = 'rgba(160,160,160,0.4)'; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(W/2, 0); ctx.lineTo(W/2, H); ctx.stroke();
-      ctx.setLineDash([]);
+      ctx.setLineDash([20, 20]); ctx.strokeStyle = 'rgba(160,160,160,0.4)'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(master.w/2, 0); ctx.lineTo(master.w/2, master.h); ctx.stroke(); ctx.setLineDash([]);
     }
 
-    // Date watermark
-    const now = new Date();
-    const dateStr = `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
+    const d = new Date(); const dateStr = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
     ctx.font = 'bold 20px monospace'; ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    ctx.textAlign = 'right'; ctx.fillText(dateStr, W - 60, H - 40);
+    ctx.textAlign = 'right'; ctx.fillText(dateStr, master.w - 60, master.h - 40);
 
     finalComposedUrl = canvas.toDataURL('image/jpeg', 1.0);
-    const fi = $('final-image'); if (fi) fi.src = finalComposedUrl;
+    $('final-image').src = finalComposedUrl;
     document.body.style.cursor = 'default';
     navigate('RESULT');
 
-    // Generate GIF if multi-shot
-    const gifCtrl = $('gif-controls');
-    if (gifCtrl) { gifCtrl.classList.add('hidden'); gifCtrl.classList.remove('opacity-100'); }
     if (capturedPhotos.length > 1 && currentLayout.type !== 'multiprint') {
-      generateAnimatedGif(capturedPhotos).then(gifUrl => {
-        if (gifUrl && gifCtrl) {
-          finalGifUrl = gifUrl;
-          gifCtrl.classList.remove('hidden');
-          setTimeout(() => { gifCtrl.classList.remove('opacity-0'); gifCtrl.classList.add('opacity-100'); }, 50);
-        }
-      });
+      generateAnimatedGif(capturedPhotos);
     }
-  } catch(e) {
-    console.error(e);
-    document.body.style.cursor = 'default';
-    showAlert('Oops! Something went wrong while saving.');
-  }
+  } catch(e) { document.body.style.cursor = 'default'; showAlert('Oops! Something went wrong while saving.'); }
 }
 
-// ==========================================
-// ANIMATED GIF GENERATOR
-// ==========================================
 async function generateAnimatedGif(images) {
-  return new Promise(async (resolve) => {
-    if (!window.gifshot || images.length < 2 || !dynamicSlots) { resolve(null); return; }
-    const offCanvas = document.createElement('canvas');
-    offCanvas.width = 600; offCanvas.height = 800;
-    const ctx = offCanvas.getContext('2d');
-    const filteredFrames = [];
-    const previewContainer = document.querySelector('.review-photo-container');
-    const previewWidth = previewContainer ? previewContainer.clientWidth : 240;
-    const clipMaskImgs = {};
-    for (let i = 0; i < dynamicSlots.length; i++) {
-      const tm = dynamicSlots[i].trueAlphaMask;
-      if (tm && !clipMaskImgs[tm]) {
-        try { clipMaskImgs[tm] = await loadImage(tm); } catch(e) {}
-      }
-    }
-    try {
-      const imgs = await Promise.all(images.map(src => loadImage(src)));
-      imgs.forEach((img, i) => {
-        ctx.save(); ctx.beginPath();
-        ctx.clearRect(0, 0, 600, 800);
-        ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, 600, 800);
-
-        const slot = dynamicSlots[i] || dynamicSlots[0];
-        const sc = document.createElement('canvas');
-        sc.width = slot.shapeBounds.w; sc.height = slot.shapeBounds.h;
-        const sctx = sc.getContext('2d');
-        const renderW = slot.shapeBounds.w * SAFE_PADDING_SCALE;
-        const renderH = slot.shapeBounds.h * SAFE_PADDING_SCALE;
-        sctx.save(); sctx.beginPath();
-        sctx.translate(slot.shapeBounds.w/2, slot.shapeBounds.h/2);
-        sctx.filter = currentFilter.css !== 'none' ? currentFilter.css : 'none';
-        const uiScale = slot.shapeBounds.w / previewWidth;
-        const transform = photoTransforms[i] || {zoom:1, x:0, y:0};
-        drawCoverFitImage(sctx, img, renderW, renderH, transform, uiScale);
-        sctx.restore();
-        if (slot.trueAlphaMask && clipMaskImgs[slot.trueAlphaMask]) {
-          sctx.globalCompositeOperation = 'destination-in';
-          sctx.drawImage(clipMaskImgs[slot.trueAlphaMask], 0, 0, slot.shapeBounds.w, slot.shapeBounds.h);
-          sctx.globalCompositeOperation = 'source-over';
-        }
-        const drawScale = Math.min(540 / slot.shapeBounds.w, 640 / slot.shapeBounds.h);
-        const finalW = slot.shapeBounds.w * drawScale;
-        const finalH = slot.shapeBounds.h * drawScale;
-        ctx.drawImage(sc, (600 - finalW)/2, (800 - finalH - 60)/2, finalW, finalH);
-        ctx.strokeStyle = '#ffdae0'; ctx.lineWidth = 4; ctx.strokeRect(30, 30, 540, 640);
-        ctx.fillStyle = '#ff2a85'; ctx.font = '900 36px monospace'; ctx.textAlign = 'center';
-        ctx.fillText('TINKLE PHOTO CLUB ✨', 300, 740);
-        ctx.restore();
-        filteredFrames.push(offCanvas.toDataURL('image/jpeg', 0.8));
-      });
-      gifshot.createGIF({ images: filteredFrames, gifWidth: 400, gifHeight: 533, interval: 0.5, numFrames: filteredFrames.length }, obj => {
-        resolve(!obj.error ? obj.image : null);
-      });
-    } catch(e) { resolve(null); }
-  });
+  $('gif-controls').classList.add('hidden'); $('gif-controls').classList.remove('opacity-100');
+  if (!window.gifshot) return;
+  const offCanvas = document.createElement('canvas'); offCanvas.width = 600; offCanvas.height = 800;
+  const ctx = offCanvas.getContext('2d'); const filteredFrames = [];
+  try {
+    const imgs = await Promise.all(images.map(src => loadImage(src)));
+    imgs.forEach((img, i) => {
+      ctx.save(); ctx.clearRect(0, 0, 600, 800); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, 600, 800);
+      const slot = currentLayout.slots[i] || currentLayout.slots[0];
+      const transform = photoTransforms[i] || {zoom:1, pctX:0, pctY:0};
+      const assets = slotAssetsData[i];
+      
+      const sc = document.createElement('canvas'); sc.width = slot.w; sc.height = slot.h;
+      renderSlot(sc.getContext('2d'), slot.w, slot.h, img, assets.maskImg, assets.overlayImg, transform, currentFilter.css, false);
+      
+      const drawScale = Math.min(540 / sc.width, 640 / sc.height);
+      const finalW = sc.width * drawScale, finalH = sc.height * drawScale;
+      ctx.drawImage(sc, (600 - finalW)/2, (800 - finalH - 60)/2, finalW, finalH);
+      
+      ctx.strokeStyle = '#ffdae0'; ctx.lineWidth = 4; ctx.strokeRect(30, 30, 540, 640);
+      ctx.fillStyle = '#ff2a85'; ctx.font = '900 36px monospace'; ctx.textAlign = 'center'; ctx.fillText('TINKLE PHOTO CLUB ✨', 300, 740);
+      ctx.restore(); filteredFrames.push(offCanvas.toDataURL('image/jpeg', 0.8));
+    });
+    gifshot.createGIF({ images: filteredFrames, gifWidth: 400, gifHeight: 533, interval: 0.5, numFrames: filteredFrames.length }, obj => {
+      if(!obj.error) { finalGifUrl = obj.image; $('gif-controls').classList.remove('hidden'); setTimeout(() => { $('gif-controls').classList.add('opacity-100'); }, 50); }
+    });
+  } catch(e) {}
 }
 
-// ==========================================
-// UI RENDERING
-// ==========================================
-function init() {
-  filterAvailableFrames();
-  renderModeSelection();
-  initCarouselSwipe();
-  initPanEvents();
-  renderFilters();
-  updateSelectedFrameUI();
-  preloadAssets();
-}
+function init() { renderModeSelection(); initCarouselSwipe(); initPanEvents(); renderFilters(); preloadAssets(); }
 
 function preloadAssets() {
-  // Pre-warm images into browser cache by loading them
-  const urls = [...FRAMES.map(f => f.mask).filter(Boolean), ...FRAMES.map(f => f.overlay).filter(Boolean)];
-  urls.forEach(url => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.src = url;
+  [...FRAMES.map(f => f.mask).filter(Boolean), ...FRAMES.map(f => f.overlay).filter(Boolean)].forEach(url => {
+    const img = new Image(); img.crossOrigin = 'anonymous'; img.src = url;
   });
 }
 
 function filterAvailableFrames() {
   if (!currentLayout) return;
   availableFrames = FRAMES.filter(f => f.supportedLayouts.includes(currentLayout.id));
-  if (!currentFrame || !availableFrames.find(f => f.id === currentFrame.id)) {
-    currentFrame = availableFrames[0] || null;
-  }
+  if (!currentFrame || !availableFrames.find(f => f.id === currentFrame.id)) currentFrame = availableFrames[0] || null;
 }
 
 function renderModeSelection() {
-  const c = $('mode-list-container'); if (!c) return;
-  c.innerHTML = `
-    <div onclick="selectAndConfirmMode('multi')" class="clickable-card bg-white border-[4px] p-4 rounded-3xl shadow-sm flex items-center gap-4 ${currentMode === 'multi' ? 'border-[#ff4d9a] bg-[#fff0f5]' : 'border-gray-200'}">
-      <div class="text-4xl">📸</div>
-      <div class="flex-1 text-left">
-        <h3 class="font-black text-[#ff2a85] text-[13px] uppercase tracking-wide leading-tight">MULTI SHOT BOOTH</h3>
-        <p class="text-[9px] font-bold text-gray-400 mt-0.5">Take multiple poses!</p>
-      </div>
-    </div>
-    <div onclick="selectAndConfirmMode('single')" class="clickable-card bg-white border-[4px] p-4 rounded-3xl shadow-sm flex items-center gap-4 mt-2 ${currentMode === 'single' ? 'border-[#4db8ff] bg-[#f0f8ff]' : 'border-gray-200'}">
-      <div class="text-4xl">✨</div>
-      <div class="flex-1 text-left">
-        <h3 class="font-black text-[#4db8ff] text-[13px] uppercase tracking-wide leading-tight">SINGLE MULTIPRINT</h3>
-        <p class="text-[9px] font-bold text-gray-400 mt-0.5">1 pose, cute duplicates!</p>
-      </div>
-    </div>`;
+  $('mode-list-container').innerHTML = `
+    <div onclick="selectAndConfirmMode('multi')" class="clickable-card bg-white border-[4px] p-4 rounded-3xl shadow-sm flex items-center gap-4 ${currentMode === 'multi' ? 'border-[#ff4d9a] bg-[#fff0f5]' : 'border-gray-200'}"><div class="text-4xl">📸</div><div class="flex-1 text-left"><h3 class="font-black text-[#ff2a85] text-[13px] uppercase tracking-wide leading-tight">MULTI SHOT BOOTH</h3><p class="text-[9px] font-bold text-gray-400 mt-0.5">Take multiple poses!</p></div></div>
+    <div onclick="selectAndConfirmMode('single')" class="clickable-card bg-white border-[4px] p-4 rounded-3xl shadow-sm flex items-center gap-4 mt-2 ${currentMode === 'single' ? 'border-[#4db8ff] bg-[#f0f8ff]' : 'border-gray-200'}"><div class="text-4xl">✨</div><div class="flex-1 text-left"><h3 class="font-black text-[#4db8ff] text-[13px] uppercase tracking-wide leading-tight">SINGLE MULTIPRINT</h3><p class="text-[9px] font-bold text-gray-400 mt-0.5">1 pose, cute duplicates!</p></div></div>`;
 }
 
-function selectAndConfirmMode(mode) {
-  currentMode = mode; renderModeSelection(); playSfx('beep');
-  setTimeout(() => confirmMode(), 300);
-}
+function selectAndConfirmMode(mode) { currentMode = mode; renderModeSelection(); playSfx('beep'); forceHardReset(); setTimeout(() => confirmMode(), 300); }
 
 function confirmMode() {
-  activeLayouts = LAYOUTS.filter(l => l.mode === currentMode);
-  carouselIndex = 0;
-  const desc = $('layout-mode-desc');
-  if (desc) desc.innerText = currentMode === 'multi' ? 'Choose your 4x6" print format' : 'Choose your sticker layout';
+  activeLayouts = LAYOUTS.filter(l => l.mode === currentMode); carouselIndex = 0;
+  $('layout-mode-desc').innerText = currentMode === 'multi' ? 'Choose your 4x6" print format' : 'Choose your sticker layout';
   updateCarousel(); navigate('LAYOUT');
 }
 
 function updateCarousel() {
   if (activeLayouts.length === 0) return;
   currentLayout = activeLayouts[carouselIndex];
-  $('carousel-icon').innerHTML  = currentLayout.icon;
-  $('carousel-name').innerText  = currentLayout.name;
+  $('carousel-icon').innerHTML  = currentLayout.icon; $('carousel-name').innerText  = currentLayout.name;
   $('carousel-shots').innerText = `${currentLayout.shots} SHOT${currentLayout.shots > 1 ? 'S' : ''}`;
   $('carousel-desc').innerText  = currentLayout.type === 'multiprint' ? '✨ MULTIPRINT' : (currentLayout.type === 'twin-strip' ? '✂️ TWIN STRIP' : '📄 FULL SHEET');
-
-  const dotsContainer = $('carousel-dots'); dotsContainer.innerHTML = '';
-  activeLayouts.forEach((_, i) => {
-    const d = document.createElement('div');
-    d.className = `w-2 h-2 rounded-full transition-colors ${i === carouselIndex ? 'bg-[#ff4d9a]' : 'bg-gray-300'}`;
-    dotsContainer.appendChild(d);
-  });
-
+  $('carousel-dots').innerHTML = '';
+  activeLayouts.forEach((_, i) => { $('carousel-dots').innerHTML += `<div class="w-2 h-2 rounded-full transition-colors ${i === carouselIndex ? 'bg-[#ff4d9a]' : 'bg-gray-300'}"></div>`; });
   filterAvailableFrames(); updateSelectedFrameUI(); renderFrameTabs(); renderFrameGrid();
 }
 
-function prevLayout() { carouselIndex = (carouselIndex - 1 + activeLayouts.length) % activeLayouts.length; updateCarousel(); }
-function nextLayout() { carouselIndex = (carouselIndex + 1) % activeLayouts.length; updateCarousel(); }
+function prevLayout() { carouselIndex = (carouselIndex - 1 + activeLayouts.length) % activeLayouts.length; forceHardReset(); updateCarousel(); }
+function nextLayout() { carouselIndex = (carouselIndex + 1) % activeLayouts.length; forceHardReset(); updateCarousel(); }
 
-function confirmLayout() {
-  playSfx('beep');
-  const card = $('carousel-layout-card');
-  if (card) { card.style.transform = 'scale(0.95)'; setTimeout(() => { card.style.transform = 'none'; navigate('FRAME'); }, 150); }
-  else navigate('FRAME');
-}
+function confirmLayout() { playSfx('beep'); const card = $('carousel-layout-card'); if (card) { card.style.transform = 'scale(0.95)'; setTimeout(() => { card.style.transform = 'none'; navigate('FRAME'); }, 150); } else navigate('FRAME'); }
 
 let carouselStartX = 0;
 function initCarouselSwipe() {
   const card = $('carousel-layout-card'); if (!card) return;
   card.addEventListener('touchstart', e => carouselStartX = e.changedTouches[0].screenX, {passive:true});
-  card.addEventListener('touchend',   e => {
-    const endX = e.changedTouches[0].screenX;
-    if (carouselStartX - endX > 40) { nextLayout(); e.stopPropagation(); }
-    else if (endX - carouselStartX > 40) { prevLayout(); e.stopPropagation(); }
-  }, {passive:true});
+  card.addEventListener('touchend', e => { const endX = e.changedTouches[0].screenX; if (carouselStartX - endX > 40) { nextLayout(); e.stopPropagation(); } else if (endX - carouselStartX > 40) { prevLayout(); e.stopPropagation(); } }, {passive:true});
 }
 
 function renderFrameTabs() {
-  const c = $('frame-category-tabs'); if (!c) return;
-  c.innerHTML = '';
-  CATEGORIES.forEach(cat => {
-    const catFrames = availableFrames.filter(f => f.category === cat);
-    if (catFrames.length === 0) return;
-    const tab = document.createElement('button');
-    tab.className = 'category-tab active'; tab.innerText = 'EXCLUSIVE FRAMES';
-    c.appendChild(tab);
-  });
+  $('frame-category-tabs').innerHTML = '';
+  CATEGORIES.forEach(cat => { if(availableFrames.filter(f => f.category === cat).length > 0) $('frame-category-tabs').innerHTML += `<button class="category-tab active">EXCLUSIVE FRAMES</button>`; });
 }
 
 function renderFrameGrid() {
-  const c = $('frame-grid-container'); if (!c) return;
-  c.innerHTML = '';
-  if (availableFrames.length === 0) {
-    c.innerHTML = '<div class="col-span-4 text-center text-xs text-gray-400 font-bold py-8">ไม่มีกรอบสำหรับ Layout นี้</div>';
-    return;
-  }
+  const c = $('frame-grid-container'); c.innerHTML = '';
+  if (availableFrames.length === 0) { c.innerHTML = '<div class="col-span-4 text-center text-xs text-gray-400 font-bold py-8">ไม่มีกรอบสำหรับ Layout นี้</div>'; return; }
   availableFrames.forEach(frame => {
-    const btn = document.createElement('div');
-    const sel = currentFrame && currentFrame.id === frame.id;
+    const btn = document.createElement('div'); const sel = currentFrame && currentFrame.id === frame.id;
     btn.className = `frame-thumb bg-white/90 backdrop-blur border-[3px] border-[#f2ede9] p-1.5 rounded-xl shadow-sm flex flex-col items-center justify-center text-center cursor-pointer active:scale-[0.95] ${sel ? 'selected border-[#ff4d9a] bg-[#fff0f5]' : ''}`;
-    btn.setAttribute('data-frame-category', frame.category);
-    btn.onclick = () => { currentFrame = frame; renderFrameGrid(); updateSelectedFrameUI(); playSfx('beep'); };
-    btn.innerHTML = `
-      <div class="w-full aspect-square mb-1 rounded border border-gray-200 shadow-inner relative overflow-hidden bg-gray-100 flex items-center justify-center">
-        <img src="${frame.overlay}" style="width:100%;height:100%;object-fit:contain;" crossorigin="anonymous" onerror="this.style.opacity='0.3'"/>
-      </div>
-      <h3 class="font-black text-[#6e6367] text-[7px] uppercase leading-tight truncate w-full">${frame.name}</h3>`;
+    btn.onclick = () => { currentFrame = frame; forceHardReset(); renderFrameGrid(); updateSelectedFrameUI(); playSfx('beep'); };
+    btn.innerHTML = `<div class="w-full aspect-square mb-1 rounded border border-gray-200 shadow-inner relative overflow-hidden bg-gray-100 flex items-center justify-center"><img src="${frame.overlay}" style="width:100%;height:100%;object-fit:contain;" crossorigin="anonymous" onerror="this.style.opacity='0.3'"/></div><h3 class="font-black text-[#6e6367] text-[7px] uppercase leading-tight truncate w-full">${frame.name}</h3>`;
     c.appendChild(btn);
   });
 }
 
 function updateSelectedFrameUI() {
-  if (!currentFrame) {
-    const name = $('selected-frame-name'), thumb = $('selected-frame-thumb');
-    if (name) name.innerText = 'No Frame';
-    if (thumb) thumb.innerHTML = '<div class="text-xl">✨</div>';
-    return;
-  }
-  const thumb = $('selected-frame-thumb'), name = $('selected-frame-name');
-  if (thumb) thumb.innerHTML = `<img src="${currentFrame.overlay}" class="w-full h-full object-contain" crossorigin="anonymous"/>`;
-  if (name) name.innerText = currentFrame.name;
+  if (!currentFrame) { $('selected-frame-name').innerText = 'No Frame'; $('selected-frame-thumb').innerHTML = '<div class="text-xl">✨</div>'; return; }
+  $('selected-frame-thumb').innerHTML = `<img src="${currentFrame.overlay}" class="w-full h-full object-contain" crossorigin="anonymous"/>`;
+  $('selected-frame-name').innerText = currentFrame.name;
 }
 
 function renderFilters() {
-  const c = $('filter-list-container'); if (!c) return;
-  c.innerHTML = '';
+  $('filter-list-container').innerHTML = '';
   FILTERS.forEach((filter, index) => {
-    const btn = document.createElement('div');
-    btn.id = `filter-btn-${index}`;
+    const btn = document.createElement('div'); btn.id = `filter-btn-${index}`;
     btn.className = `filter-item bg-white/90 backdrop-blur border-[3px] p-3 rounded-2xl shadow-sm flex flex-col items-center justify-center text-center cursor-pointer transition-transform active:scale-[0.95]`;
-    btn.onclick = () => {
-      currentFilter = filter; updateFilterSelection(); playSfx('beep');
-      if (btn.classList.contains('selected')) setTimeout(() => navigate('CAMERA'), 200);
-    };
-    btn.innerHTML = `
-      <div class="w-12 h-12 rounded-full overflow-hidden mb-2 border-2 border-gray-200 shadow-inner bg-gray-300 relative">
-        <div class="absolute inset-0 bg-cover bg-center" style="background-image:url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 fill=%22%23ffdae0%22/%3E%3Ctext x=%2230%22 y=%2260%22 font-size=%2240%22%3E📸%3C/text%3E%3C/svg%3E');filter:${filter.css}"></div>
-      </div>
-      <h3 class="font-black text-[#6e6367] text-[10px] uppercase leading-tight">${filter.name}</h3>`;
-    c.appendChild(btn);
+    btn.onclick = () => { currentFilter = filter; updateFilterSelection(); playSfx('beep'); if (btn.classList.contains('selected')) setTimeout(() => navigate('CAMERA'), 200); };
+    btn.innerHTML = `<div class="w-12 h-12 rounded-full overflow-hidden mb-2 border-2 border-gray-200 shadow-inner bg-gray-300 relative"><div class="absolute inset-0 bg-cover bg-center" style="background-image:url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 fill=%22%23ffdae0%22/%3E%3Ctext x=%2230%22 y=%2260%22 font-size=%2240%22%3E📸%3C/text%3E%3C/svg%3E');filter:${filter.css}"></div></div><h3 class="font-black text-[#6e6367] text-[10px] uppercase leading-tight">${filter.name}</h3>`;
+    $('filter-list-container').appendChild(btn);
   });
   updateFilterSelection();
 }
@@ -1515,56 +1015,32 @@ function renderFilters() {
 function updateFilterSelection() {
   FILTERS.forEach((filter, index) => {
     const btn = $(`filter-btn-${index}`); if (!btn) return;
-    if (currentFilter.id === filter.id) {
-      btn.classList.add('selected', 'border-[#ff4d9a]', 'bg-[#fff0f5]');
-      btn.classList.remove('border-[#f2ede9]');
-    } else {
-      btn.classList.remove('selected', 'border-[#ff4d9a]', 'bg-[#fff0f5]');
-      btn.classList.add('border-[#f2ede9]');
-    }
+    if (currentFilter.id === filter.id) { btn.classList.add('selected', 'border-[#ff4d9a]', 'bg-[#fff0f5]'); btn.classList.remove('border-[#f2ede9]'); } 
+    else { btn.classList.remove('selected', 'border-[#ff4d9a]', 'bg-[#fff0f5]'); btn.classList.add('border-[#f2ede9]'); }
   });
 }
 
-// ==========================================
-// SHARE / DOWNLOAD
-// ==========================================
 async function shareFile(dataUrl, filename, mimeType) {
   if (!dataUrl) return;
   try {
-    const res = await fetch(dataUrl);
-    const blob = await res.blob();
-    const file = new File([blob], filename, { type: mimeType });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ title: 'Tinkle Photo Club ✨', text: 'ดูรูปน่ารักๆ ของฉันสิ! 📸🎀', files: [file] });
-    } else throw new Error('no share support');
-  } catch (err) {
-    showAlert('อุปกรณ์ของคุณไม่รองรับการแชร์โดยตรง ระบบจะทำการดาวน์โหลดให้แทนนะคะ 🥺');
-    if (mimeType === 'image/gif') downloadGif(); else downloadImage();
-  }
+    const res = await fetch(dataUrl); const blob = await res.blob(); const file = new File([blob], filename, { type: mimeType });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ title: 'Tinkle Photo Club ✨', text: 'ดูรูปน่ารักๆ ของฉันสิ! 📸🎀', files: [file] });
+    else throw new Error('no share support');
+  } catch (err) { showAlert('อุปกรณ์ของคุณไม่รองรับการแชร์โดยตรง ระบบจะทำการดาวน์โหลดให้แทนนะคะ 🥺'); if (mimeType === 'image/gif') downloadGif(); else downloadImage(); }
 }
 
 function downloadImage() {
-  if (!finalComposedUrl) return;
-  const link = document.createElement('a');
-  link.href = finalComposedUrl; link.download = `tinkle_photo_${Date.now()}.jpg`;
-  document.body.appendChild(link); link.click(); document.body.removeChild(link);
+  if (!finalComposedUrl) return; const link = document.createElement('a'); link.href = finalComposedUrl; link.download = `tinkle_photo_${Date.now()}.jpg`; document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
 
 function downloadGif() {
-  if (!finalGifUrl) return;
-  const link = document.createElement('a');
-  link.href = finalGifUrl; link.download = `tinkle_animation_${Date.now()}.gif`;
-  document.body.appendChild(link); link.click(); document.body.removeChild(link);
+  if (!finalGifUrl) return; const link = document.createElement('a'); link.href = finalGifUrl; link.download = `tinkle_animation_${Date.now()}.gif`; document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
 
 function resetApp() {
-  capturedPhotos = []; finalComposedUrl = null; finalGifUrl = null;
-  retakeTargetIndex = -1; photoTransforms = []; activePhotoIndex = 0;
-  currentFilter = FILTERS[0]; updateFilterSelection();
-  const zs = $('review-zoom-slider'); if (zs) zs.value = 1;
-  const fi = $('final-image'); if (fi) fi.src = '';
-  const gifCtrl = $('gif-controls');
-  if (gifCtrl) { gifCtrl.classList.add('hidden', 'opacity-0'); gifCtrl.classList.remove('opacity-100'); }
+  forceHardReset(); currentMode = 'multi'; activeLayouts = []; carouselIndex = 0; currentLayout = null; currentFrame = null; currentFilter = FILTERS[0]; updateFilterSelection();
+  const zs = $('review-zoom-slider'); if (zs) zs.value = 1; $('final-image').src = '';
+  const gifCtrl = $('gif-controls'); if (gifCtrl) { gifCtrl.classList.add('hidden', 'opacity-0'); gifCtrl.classList.remove('opacity-100'); }
   navigate('HOME');
 }
 
