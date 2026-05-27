@@ -66,7 +66,7 @@ height: 54vh; background-color: var(--cream-white);
 border-bottom-left-radius: 24px; border-bottom-right-radius: 24px;
 box-shadow: 0 10px 20px rgba(0,0,0,0.05);
 display: flex; flex-direction: column;
-position: relative; z-index: 20; padding-bottom: 12px;
+position: relative; z-index: 20; padding-bottom: 24px; /* 🎀 ปรับความสูงขอบล่างเพิ่มพื้นที่กด */
 }
 .toy-hidden-area {
 flex: 1; background-color: #ff2a85;
@@ -196,7 +196,8 @@ overflow: hidden;    /* 🎀 บังคับไม่ให้รูปทะ
 <h1 class="text-[72px] font-black tracking-tighter leading-none text-white drop-shadow-lg" style="text-shadow: 0 4px 15px rgba(255,42,133,0.3);">TINKLE<br/><span class="text-[#ff2a85] text-[42px] tracking-tight">PHOTO CLUB</span></h1>
 </div>
 <div class="fade-in flex flex-col items-center w-full" style="animation-delay:0.2s">
-<button class="toy-action-btn mb-4" onclick="navigate('MODE')">OK</button>
+<!-- 🎯 ขยับปุ่ม OK หน้าแรกขึ้น -->
+<button class="toy-action-btn mb-6" onclick="navigate('MODE')">OK</button>
 <div class="bg-white/95 backdrop-blur-sm px-5 py-2 rounded-full border-[3px] border-white shadow-sm text-center">
 <p class="text-[#ff2a85] font-black text-[11px] tracking-wide flex items-center gap-1.5 uppercase"><span>💖 TAP OK TO START 💖</span></p>
 </div>
@@ -214,7 +215,7 @@ overflow: hidden;    /* 🎀 บังคับไม่ให้รูปทะ
 <h2 class="header-title"><span class="text-yellow-400 text-2xl mr-2">⭐1</span> Choose Mode</h2>
 <p class="header-subtitle mt-1 text-pink-500">แตะเลือกรูปแบบการถ่ายรูปได้เลย!</p>
 </div>
-<div class="w-full px-6 flex flex-col justify-center gap-4 flex-1 overflow-y-auto no-scrollbar" id="mode-list-container"></div>
+<div class="w-full px-6 flex flex-col justify-center gap-4 flex-1 overflow-y-auto no-scrollbar pb-6" id="mode-list-container"></div>
 </div>
 <div class="toy-hidden-area"></div>
 </div>
@@ -238,7 +239,7 @@ overflow: hidden;    /* 🎀 บังคับไม่ให้รูปทะ
 <button onclick="nextLayout()" class="absolute right-2 z-20 w-14 h-14 bg-white/90 rounded-full shadow-md text-pink-500 font-black text-2xl border-4 border-pink-100 flex items-center justify-center active:scale-95">▶</button>
 </div>
 <div id="carousel-dots" class="flex justify-center gap-1.5 py-3"></div>
-<div class="flex justify-center shrink-0">
+<div class="flex justify-center shrink-0 mb-6"> <!-- 🎯 ขยับปุ่ม OK หน้านี้ขึ้นด้วย mb-6 -->
 <button class="toy-action-btn" onclick="confirmLayout()">OK</button>
 </div>
 </div>
@@ -256,7 +257,8 @@ overflow: hidden;    /* 🎀 บังคับไม่ให้รูปทะ
 <div class="flex-1 w-full mt-2 px-6 py-2 overflow-y-auto no-scrollbar">
 <div class="grid grid-cols-4 gap-2" id="frame-grid-container"></div>
 </div>
-<div class="shrink-0 px-6 py-3 flex justify-between items-center bg-white border-t border-gray-100 mt-auto">
+<!-- 🎯 ขยับแถบเลือกรอบสุดท้ายขึ้นด้วย mb-6 -->
+<div class="shrink-0 px-6 py-3 flex justify-between items-center bg-white border-t border-gray-100 mt-auto mb-6">
 <div class="flex items-center space-x-3">
 <div class="w-12 h-12 bg-gray-100 rounded border border-gray-200 shrink-0 overflow-hidden" id="selected-frame-thumb"></div>
 <div class="min-w-0">
@@ -278,7 +280,8 @@ overflow: hidden;    /* 🎀 บังคับไม่ให้รูปทะ
 <h2 class="header-title"><span class="text-yellow-400 text-2xl mr-2">⭐4</span> Select Filter</h2>
 </div>
 <div class="w-full px-8 mt-2 grid grid-cols-2 gap-3 flex-1 overflow-y-auto no-scrollbar pb-2" id="filter-list-container"></div>
-<div class="flex justify-center shrink-0 pt-3 pb-1 border-t border-gray-100 mt-auto">
+<!-- 🎯 ขยับปุ่ม OK หน้านี้ขึ้นด้วย pb-6 -->
+<div class="flex justify-center shrink-0 pt-3 pb-6 border-t border-gray-100 mt-auto">
 <button class="toy-action-btn" onclick="navigate('CAMERA')">OK</button>
 </div>
 </div>
@@ -288,7 +291,6 @@ overflow: hidden;    /* 🎀 บังคับไม่ให้รูปทะ
 <!-- STEP 5: CAMERA -->
 <div id="screen-CAMERA" class="screen">
 <div id="camera-flash" class="absolute inset-0 z-50 pointer-events-none hidden bg-white"></div>
-<!-- 🎀 คืนค่าความสูงเป็น 54vh เท่าเดิม -->
 <div class="toy-window bg-gray-900 border-none rounded-none" style="height: 54vh; padding-bottom: 0;">
 <button class="back-btn back-btn-dark" onclick="goBack('CAMERA')">◀</button>
 
@@ -299,8 +301,8 @@ overflow: hidden;    /* 🎀 บังคับไม่ให้รูปทะ
 </button>
 
 <!-- 🎯 ปุ่มสลับกล้อง -->
-<button onclick="toggleCamera()" class="absolute top-3 right-3 z-20 w-10 h-10 bg-black/40 backdrop-blur rounded-full flex items-center justify-center text-white active:scale-95 border border-white/20 shadow-md">
-<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/><path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><circle cx="12" cy="12" r="3"/><path d="m18 22-3-3 3-3"/><path d="m6 2 3 3-3 3"/></svg>
+<button onclick="toggleCamera()" class="absolute top-3 right-3 z-20 w-12 h-12 bg-black/40 backdrop-blur rounded-full flex items-center justify-center text-white active:scale-95 border-2 border-white/20 shadow-md">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/><path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><circle cx="12" cy="12" r="3"/><path d="m18 22-3-3 3-3"/><path d="m6 2 3 3-3 3"/></svg>
 </button>
 
 <!-- 🎀 คืนค่าความกว้างกล้องให้พอดี 54vh -->
@@ -330,7 +332,8 @@ overflow: hidden;    /* 🎀 บังคับไม่ให้รูปทะ
 </div>
 
 <div class="mt-3 flex space-x-1.5" id="shot-progress-dots"></div>
-<button id="capture-btn" class="toy-action-btn !py-2 !px-8 !text-xl mt-3 mb-2" onclick="startShootingSequence()">OK</button>
+<!-- 🎯 ขยับปุ่มถ่ายรูปกล้องขึ้นด้วย mb-6 -->
+<button id="capture-btn" class="toy-action-btn !py-2 !px-8 !text-xl mt-3 mb-6" onclick="startShootingSequence()">OK</button>
 </div>
 </div>
 <div class="toy-hidden-area"></div>
@@ -354,7 +357,8 @@ overflow: hidden;    /* 🎀 บังคับไม่ให้รูปทะ
 <span class="text-gray-500 text-xs font-bold drop-shadow-sm">➕</span>
 </div>
 </div>
-<div class="flex justify-center shrink-0 pt-2 pb-1 border-t border-gray-100 mt-auto">
+<!-- 🎯 ขยับปุ่ม FINISH ขึ้นด้วย pb-6 -->
+<div class="flex justify-center shrink-0 pt-2 pb-6 border-t border-gray-100 mt-auto">
 <button class="toy-action-btn !py-2 !px-8 !text-xl" onclick="processFinalPrint()">FINISH</button>
 </div>
 </div>
@@ -372,7 +376,8 @@ overflow: hidden;    /* 🎀 บังคับไม่ให้รูปทะ
       <img id="final-image" src="" class="max-w-[80%] max-h-full shadow-md border-2 border-gray-200 object-contain fade-in rounded-[8px]" />
     </div>
     
-    <div class="shrink-0 w-full px-5 flex flex-col gap-2 mt-auto pb-2 border-t border-gray-100 pt-2">
+    <!-- 🎯 ขยับแผงปุ่มบันทึกรูปและ RESTART ขึ้นด้วย pb-6 -->
+    <div class="shrink-0 w-full px-5 flex flex-col gap-2 mt-auto pb-6 border-t border-gray-100 pt-2">
       <div class="flex gap-2 w-full">
         <button class="flex-1 bg-gray-100 text-[#6e6367] font-black py-2 rounded-xl shadow-sm active:scale-95 flex items-center justify-center gap-1 border border-gray-200" onclick="downloadImage()">
           <span class="text-lg">📥</span><span class="text-[10px]">SAVE JPG</span>
@@ -401,8 +406,9 @@ overflow: hidden;    /* 🎀 บังคับไม่ให้รูปทะ
 
 <script>
 // ==========================================
-// TINKLE PHOTO CLUB v46.0 — FIXED 54vh TOP-HALF Edition
+// TINKLE PHOTO CLUB v47.0 — STABLE PRODUCTION-READY
 // One Single Render Function for Preview & Export.
+// POP ART Filter & MediaPipe AI Selfie Segmentation optimized for Older Devices
 // ==========================================
 
 function showAlert(msg) {
@@ -437,7 +443,6 @@ const FRAMES = [
 { id: 'no_bad', name: 'No Bad', category: 'special', supportedLayouts: ['classic_4cut'], overlay: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/no%20bad.png', mask: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/no%20bad_mark.png' }
 ];
 
-// 🎨 เพิ่มฟิลเตอร์ POP ART
 const FILTERS = [
 { id: 'normal', name: 'NORMAL', css: 'none' },
 { id: 'beauty', name: 'BEAUTY', css: 'brightness(1.15) contrast(1.05) saturate(1.1)' },
@@ -470,7 +475,7 @@ let aiLoopActive = false;
 let hasAiLoaded = false;
 let lastProcessedCanvas = document.createElement('canvas'); 
 
-// สร้างลวดลาย Pattern (ก้อนเมฆและตาราง)
+// สร้างลวดลาย Pattern 
 let gridPattern = null;
 function getGridPattern(ctx) {
   if(gridPattern) return gridPattern;
@@ -485,7 +490,6 @@ function getGridPattern(ctx) {
 
 let cloudPattern = null;
 const cloudImg = new Image();
-// SVG รูปก้อนเมฆน่ารักๆ แบบ Base64
 cloudImg.src = "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23d6e8f9'/%3E%3Cpath d='M20,60 a15,15 0 0,1 0,-30 a20,20 0 0,1 40,-10 a15,15 0 0,1 20,15 a15,15 0 0,1 -10,25 z' fill='%23ffffff' opacity='0.9'/%3E%3C/svg%3E";
 function getCloudPattern(ctx) {
   if(cloudPattern) return cloudPattern;
@@ -493,7 +497,7 @@ function getCloudPattern(ctx) {
     cloudPattern = ctx.createPattern(cloudImg, 'repeat');
     return cloudPattern;
   }
-  return '#d6e8f9'; // fallback color
+  return '#d6e8f9';
 }
 
 const $ = id => document.getElementById(id);
@@ -516,7 +520,6 @@ if (type === 'beep') {
   gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
   osc.start(); osc.stop(audioCtx.currentTime + 0.2);
 } else if (type === 'print') {
-  // 🖨️ เสียงปริ้นท์รูป (เครื่องกำลังคายกระดาษ)
   osc.type = 'sawtooth'; osc.frequency.setValueAtTime(30, audioCtx.currentTime);
   osc.frequency.linearRampToValueAtTime(20, audioCtx.currentTime + 2.5);
   gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
@@ -547,7 +550,6 @@ if (cCanvas) { const ctx = cCanvas.getContext('2d'); ctx.clearRect(0,0, cCanvas.
 const container = $('camera-viewport');
 if (container) container.style.aspectRatio = '';
 
-// Reset Dispenser
 const disp = $('dispensed-photo-container');
 if (disp) { disp.style.transition = 'none'; disp.style.transform = 'translateY(-120%)'; }
 }
@@ -702,7 +704,7 @@ function renderOneSlot(outputCtx, outputW, outputH, srcElem, isVideo, maskImg, o
   // 📌 ลบมุมคม (Rounded Corners) สไตล์สติกเกอร์ สำหรับเคสที่ไม่มี Mask
   if (!maskImg) {
     outputCtx.beginPath();
-    const r = Math.min(outputW, outputH) * 0.04; // ความโค้งมุม 4% 
+    const r = Math.min(outputW, outputH) * 0.04; 
     outputCtx.moveTo(r, 0);
     outputCtx.lineTo(outputW - r, 0);
     outputCtx.quadraticCurveTo(outputW, 0, outputW, r);
@@ -747,7 +749,8 @@ function renderOneSlot(outputCtx, outputW, outputH, srcElem, isVideo, maskImg, o
   }
   if (applyFilter && applyFilter !== 'none') outputCtx.filter = applyFilter;
   
-  if (isFacingUser) outputCtx.scale(-1, 1);
+  // 🎯 แก้ปัญหา Mirroring (กลับกล้อง): สลับภาพพรีวิวขวาซ้ายเฉพาะกล้องสดเท่านั้น ตอน Finish จะไม่สลับซ้ำ
+  if (isVideo && isFacingUser) outputCtx.scale(-1, 1);
   
   outputCtx.drawImage(srcElem, -drawW/2, -drawH/2, drawW, drawH);
   outputCtx.restore();
@@ -799,7 +802,7 @@ case 'REVIEW': forceHardReset(); navigate('FILTER'); break;
 }
 }
 
-// 🪄 ================= AI BACKGROUND REMOVAL LOGIC =================
+// 🪄 ================= AI BACKGROUND REMOVAL LOGIC (Throttled for Performance) =================
 async function toggleBgRemoval() {
   playSfx('beep');
   bgRemovalMode = (bgRemovalMode + 1) % BG_NAMES.length;
@@ -837,20 +840,27 @@ async function toggleBgRemoval() {
 }
 
 function onMediaPipeResults(results) {
-  lastProcessedCanvas.width = results.image.width;
-  lastProcessedCanvas.height = results.image.height;
+  const vid = $('camera-video');
+  if (!vid || vid.readyState < 2) return;
+  
+  // รักษาความละเอียดที่แท้จริงของกล้องไว้ตอนคัดแยกฉากหลัง
+  const vw = vid.videoWidth || 1280;
+  const vh = vid.videoHeight || 720;
+  
+  lastProcessedCanvas.width = vw;
+  lastProcessedCanvas.height = vh;
   const ctx = lastProcessedCanvas.getContext('2d');
   
-  ctx.clearRect(0, 0, lastProcessedCanvas.width, lastProcessedCanvas.height);
+  ctx.clearRect(0, 0, vw, vh);
   
-  // 1. วาด Mask 
-  ctx.drawImage(results.segmentationMask, 0, 0, lastProcessedCanvas.width, lastProcessedCanvas.height);
+  // 1. วาด Mask ขนาดย่อที่ยืดมาเท่ากับสัดส่วนกล้องจริง
+  ctx.drawImage(results.segmentationMask, 0, 0, vw, vh);
   
-  // 2. ซ้อนภาพคนเข้าไป
+  // 2. ซ้อนภาพคนจริงระดับความละเอียดสูง (source-in)
   ctx.globalCompositeOperation = 'source-in';
-  ctx.drawImage(results.image, 0, 0, lastProcessedCanvas.width, lastProcessedCanvas.height);
+  ctx.drawImage(vid, 0, 0, vw, vh);
   
-  // 3. ใส่ฉากหลังตามลวดลาย
+  // 3. ใส่ฉากหลังลวดลายต่างๆ ไว้หลังภาพคน
   ctx.globalCompositeOperation = 'destination-over';
   if (bgRemovalMode === 1) { // PINK
       ctx.fillStyle = '#ffdae0';
@@ -859,7 +869,7 @@ function onMediaPipeResults(results) {
   } else if (bgRemovalMode === 3) { // CLOUDS
       ctx.fillStyle = getCloudPattern(ctx);
   } else if (bgRemovalMode === 4) { // HOLO
-      const grd = ctx.createLinearGradient(0, 0, lastProcessedCanvas.width, lastProcessedCanvas.height);
+      const grd = ctx.createLinearGradient(0, 0, vw, vh);
       grd.addColorStop(0, '#ff9a9e');
       grd.addColorStop(0.5, '#fecfef');
       grd.addColorStop(1, '#a1c4fd');
@@ -867,22 +877,36 @@ function onMediaPipeResults(results) {
   }
   
   if(bgRemovalMode !== 0) {
-      ctx.fillRect(0, 0, lastProcessedCanvas.width, lastProcessedCanvas.height);
+      ctx.fillRect(0, 0, vw, vh);
   }
   
   ctx.globalCompositeOperation = 'source-over';
 }
 
+let lastAiProcessedTime = 0;
 async function processAILoop() {
   if (!aiLoopActive) return;
   const vid = $('camera-video');
-  if (bgRemovalMode !== 0 && selfieSegmentation && vid.readyState >= 2 && !vid.paused) {
+  const now = performance.now();
+  
+  // 🎯 แก้ปัญหากล้องค้างในเครื่องเก่า: จำกัดทราฟฟิกภาพเข้า AI ไม่เกิน 12 FPS (ทุกๆ 80ms) และส่งภาพสเกลเล็ก 256x256
+  if (bgRemovalMode !== 0 && selfieSegmentation && vid.readyState >= 2 && !vid.paused && (now - lastAiProcessedTime > 80)) {
+    lastAiProcessedTime = now;
     try {
-      await selfieSegmentation.send({image: vid});
+      if (!window.aiInputCanvas) {
+        window.aiInputCanvas = document.createElement('canvas');
+        window.aiInputCanvas.width = 256;
+        window.aiInputCanvas.height = 256;
+        window.aiInputCtx = window.aiInputCanvas.getContext('2d');
+      }
+      // ย่อขนาดภาพวิดีโอสดก่อนส่งเข้าเครื่องยนต์ AI เพื่อประหยัด CPU มือถือรุ่นเก่า
+      window.aiInputCtx.drawImage(vid, 0, 0, 256, 256);
+      await selfieSegmentation.send({image: window.aiInputCanvas});
     } catch(e) { console.warn('MediaPipe error:', e); }
   }
   if (aiLoopActive) {
-    requestAnimationFrame(processAILoop);
+    // ใช้ setTimeout แทน requestAnimationFrame เพื่อให้เครื่องระบบมีเวลาหายใจ
+    setTimeout(processAILoop, 30);
   }
 }
 
@@ -1028,20 +1052,20 @@ canvas.width = 0; canvas.height = 0;
 const imgRatio = vw / vh;
 
 if (retakeTargetIndex !== -1) {
-capturedPhotos[retakeTargetIndex] = raw; photoTransforms[retakeTargetIndex] = {zoom:1, pctX:0, pctY:0};
-capturedPhotoRatios[retakeTargetIndex] = imgRatio;
-retakeTargetIndex = -1; isShooting = false;
-setTimeout(() => { navigate('REVIEW'); }, 1000);
+  capturedPhotos[retakeTargetIndex] = raw; photoTransforms[retakeTargetIndex] = {zoom:1, pctX:0, pctY:0};
+  capturedPhotoRatios[retakeTargetIndex] = imgRatio;
+  retakeTargetIndex = -1; isShooting = false;
+  setTimeout(() => { navigate('REVIEW'); }, 1000);
 } else {
-capturedPhotos.push(raw); photoTransforms.push({zoom:1, pctX:0, pctY:0});
-capturedPhotoRatios.push(imgRatio);
-updateCameraUI();
-if (capturedPhotos.length < currentLayout.shots) {
-setTimeout(() => { isShooting = false; startShootingSequence(); }, 1000);
-} else {
-isShooting = false;
-setTimeout(() => { navigate('REVIEW'); }, 1000);
-}
+  capturedPhotos.push(raw); photoTransforms.push({zoom:1, pctX:0, pctY:0});
+  capturedPhotoRatios.push(imgRatio);
+  updateCameraUI();
+  if (capturedPhotos.length < currentLayout.shots) {
+    setTimeout(() => { isShooting = false; startShootingSequence(); }, 1000);
+  } else {
+    isShooting = false;
+    setTimeout(() => { navigate('REVIEW'); }, 1000);
+  }
 }
 }
 
@@ -1178,18 +1202,48 @@ for (let i = 0; i < currentLayout.slots.length; i++) {
   const rL = assets.region;
   const scL = document.createElement('canvas');
   scL.width = rL.w; scL.height = rL.h;
+  
+  // 🎯 เคล็ดลับแก้บั๊ก Safari ไม่เรนเดอร์ CSS Filter บน offscreen canvas:
+  // แอบนำ Canvas นี้เข้าสู่ DOM ชั่วคราวเพื่อให้ Engine ของ Safari ยอมประมวลผลคำสั่ง filter
+  scL.style.position = 'absolute';
+  scL.style.left = '-9999px';
+  scL.style.visibility = 'hidden';
+  document.body.appendChild(scL);
+  
   renderOneSlot(scL.getContext('2d'), rL.w, rL.h, imgs[shotIndex], false, assets.maskImg, assets.overlayImg, transform, currentFilter.css, i);
   ctx.drawImage(scL, rL.x0, rL.y0);
-  scL.width = 0; scL.height = 0; 
+  
+  document.body.removeChild(scL);
+  scL.width = 0; scL.height = 0; // เคลียร์หน่วยความจำ
 
   if (isTwinExport && assets.regionRight) {
     const rR = assets.regionRight;
     const scR = document.createElement('canvas');
     scR.width = rR.w; scR.height = rR.h;
+    
+    scR.style.position = 'absolute';
+    scR.style.left = '-9999px';
+    scR.style.visibility = 'hidden';
+    document.body.appendChild(scR);
+    
     renderOneSlot(scR.getContext('2d'), rR.w, rR.h, imgs[shotIndex], false, assets.maskImgRight || assets.maskImg, assets.overlayImgRight || assets.overlayImg, transform, currentFilter.css, i + currentLayout.slots.length);
     ctx.drawImage(scR, rR.x0, rR.y0);
+    
+    document.body.removeChild(scR);
     scR.width = 0; scR.height = 0;
   }
+}
+
+// ✂️ ลูกเล่นตกแต่งอัตโนมัติสำหรับหมวด Multiprint (วาดเส้นประรอบแผ่นปริ้นท์)
+if (currentLayout.type === 'multiprint' && (!currentFrame || !currentFrame.mask)) {
+    ctx.save();
+    ctx.setLineDash([20, 20]);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.lineWidth = 10;
+    currentLayout.slots.forEach(s => {
+        ctx.strokeRect(s.x + 5, s.y + 5, s.w - 10, s.h - 10);
+    });
+    ctx.restore();
 }
 
 if (masterOverlayObj) {
@@ -1211,7 +1265,7 @@ canvas.width = 0; canvas.height = 0;
 $('final-image').src = finalComposedUrl;
 document.body.style.cursor = 'default';
 
-// 🎀 นำ Dispenser Animation ออก และกลับมาแสดงผลปกติ
+// ไปยังหน้าแสดงผลรูปภาพแผ่นจบ
 navigate('RESULT');
 
 if (capturedPhotos.length > 1 && currentLayout.type !== 'multiprint') {
