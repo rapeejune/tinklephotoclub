@@ -522,29 +522,23 @@ function playSfx(type) {
 // ==========================================
 // IMAGE LOADER (with CORS + blob cache)
 // ==========================================
-async function fetchAndCache(url) {
-  if (!window.caches) return url;
-  try {
-    const cache = await caches.open('tinkle-assets-v2');
-    let res = await cache.match(url);
-    if (!res) {
-      res = await fetch(url, { mode: 'cors' });
-      if (res.ok) cache.put(url, res.clone());
-    }
-    if (res) { const blob = await res.blob(); return URL.createObjectURL(blob); }
-  } catch (e) { console.warn('fetchAndCache fallback:', url); }
-  return url;
-}
-
-const loadImage = async (src) => {
-  return new Promise(async (res, rej) => {
+// Simple direct loader — no blob/cache wrapper that breaks crossOrigin
+const loadImage = (src) => {
+  return new Promise((resolve, reject) => {
     const img = new Image();
-    if (src && src.startsWith('http')) img.crossOrigin = 'anonymous';
-    img.onload = () => res(img);
-    img.onerror = () => rej(new Error('Failed: ' + src));
-    img.src = (src && src.startsWith('http')) ? await fetchAndCache(src) : src;
+    img.crossOrigin = 'anonymous';
+    img.onload  = () => resolve(img);
+    img.onerror = (e) => {
+      console.error('Image load failed:', src, e);
+      reject(new Error('Failed: ' + src));
+    };
+    // Add cache-busting only for raw.githubusercontent URLs if needed
+    img.src = src;
   });
 };
+
+// Keep fetchAndCache as no-op (direct URL works fine with CORS *)
+async function fetchAndCache(url) { return url; }
 
 // ==========================================
 // MASK SCANNER — TRUE ALPHA FROM *_mark.png
@@ -1276,15 +1270,13 @@ function init() {
 }
 
 function preloadAssets() {
-  if (!window.caches) return;
+  // Pre-warm images into browser cache by loading them
   const urls = [...FRAMES.map(f => f.mask).filter(Boolean), ...FRAMES.map(f => f.overlay).filter(Boolean)];
-  caches.open('tinkle-assets-v2').then(cache => {
-    urls.forEach(url => {
-      cache.match(url).then(m => {
-        if (!m) fetch(url, {mode:'cors'}).then(r => { if(r.ok) cache.put(url, r); }).catch(()=>{});
-      });
-    });
-  }).catch(()=>{});
+  urls.forEach(url => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = url;
+  });
 }
 
 function filterAvailableFrames() {
