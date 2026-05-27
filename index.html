@@ -664,11 +664,11 @@ function stopPreviewLoop() {
 async function startPreviewLoop() {
   stopPreviewLoop();
 
-  const vid     = $('camera-video');
-  const canvas  = $('preview-canvas');
+  const vid    = $('camera-video');
+  const canvas = $('preview-canvas');
   if (!vid || !canvas) return;
 
-  // Load mask images for compositing
+  // Pre-load trueAlphaMask images (tight-cropped to shapeBounds already)
   previewMaskImages = [];
   if (dynamicSlots) {
     for (const slot of dynamicSlots) {
@@ -681,7 +681,6 @@ async function startPreviewLoop() {
     }
   }
 
-  // Determine current shot index to show correct slot
   function getCurrentSlotIndex() {
     if (retakeTargetIndex !== -1) return retakeTargetIndex;
     return Math.min(capturedPhotos.length, (currentLayout ? currentLayout.shots : 1) - 1);
@@ -693,79 +692,91 @@ async function startPreviewLoop() {
       return;
     }
 
-    const slots = getActiveSlots();
+    const slots   = getActiveSlots();
     const slotIdx = getCurrentSlotIndex();
-    const slot = slots[slotIdx] || slots[0];
+    const slot    = slots[slotIdx] || slots[0];
     if (!slot) { previewRAF = requestAnimationFrame(drawFrame); return; }
 
-    // Set canvas size to match slot shape bounds aspect ratio
-    const aspect = slot.shapeBounds.w / slot.shapeBounds.h;
+    // STEP 1: Canvas dimensions = shapeBounds of THIS slot only.
+    // shapeBounds = tight rect around opaque mask pixels.
+    // Camera feed must be independently centered inside THIS rect from origin (0,0).
+    // No global coordinates. No reference to other slots.
+    const sW = slot.shapeBounds.w;
+    const sH = slot.shapeBounds.h;
+
     const container = $('camera-viewport');
-    const cW = container ? container.clientWidth : 260;
-    const cH = Math.round(cW / aspect);
+    const maxW = container ? container.clientWidth  : 260;
+    const scaleToFit = maxW / sW;
+    const cW = Math.round(sW * scaleToFit);
+    const cH = Math.round(sH * scaleToFit);
 
     if (canvas.width !== cW || canvas.height !== cH) {
       canvas.width  = cW;
       canvas.height = cH;
       canvas.style.width  = cW + 'px';
       canvas.style.height = cH + 'px';
-      if (container) container.style.aspectRatio = `${cW}/${cH}`;
+      if (container) container.style.aspectRatio = `${sW}/${sH}`;
     }
 
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, cW, cH);
+    // STEP 2: Draw camera feed into an isolated slot-local canvas (cW x cH).
+    // Cover-fit video into (cW x cH). Origin = top-left of THIS slot's bounds.
+    // This is a completely independent viewport — no global canvas reference.
+    const slotCanvas = document.createElement('canvas');
+    slotCanvas.width  = cW;
+    slotCanvas.height = cH;
+    const sCtx = slotCanvas.getContext('2d');
 
-    // 1. Draw dark background (everything outside mask will stay dark)
-    ctx.fillStyle = '#111111';
-    ctx.fillRect(0, 0, cW, cH);
+    const vW = vid.videoWidth  || 640;
+    const vH = vid.videoHeight || 480;
+    const vRatio = vW / vH;
+    const cRatio = cW / cH;
+    let drawW, drawH;
+    if (vRatio > cRatio) { drawH = cH; drawW = drawH * vRatio; }
+    else                  { drawW = cW; drawH = drawW / vRatio; }
+    const drawX = (cW - drawW) / 2;
+    const drawY = (cH - drawH) / 2;
 
-    // 2. Draw camera feed to a temp canvas with filter
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = cW; tempCanvas.height = cH;
-    const tCtx = tempCanvas.getContext('2d');
+    sCtx.save();
+    sCtx.filter = currentFilter.css !== 'none' ? currentFilter.css : 'none';
+    if (isFacingUser) {
+      // Mirror horizontally around canvas center
+      sCtx.translate(cW, 0);
+      sCtx.scale(-1, 1);
+    }
+    sCtx.drawImage(vid, drawX, drawY, drawW, drawH);
+    sCtx.restore();
 
-    tCtx.save();
-    // Mirror for front camera
-    if (isFacingUser) { tCtx.translate(cW, 0); tCtx.scale(-1, 1); }
-    tCtx.filter = currentFilter.css !== 'none' ? currentFilter.css : 'none';
-
-    // Cover-fit the video into the slot bounds
-    const vW = vid.videoWidth || cW, vH = vid.videoHeight || cH;
-    const vRatio = vW / vH, cRatio = cW / cH;
-    let dw, dh, dx, dy;
-    if (vRatio > cRatio) { dh = cH; dw = dh * vRatio; dx = -(dw - cW)/2; dy = 0; }
-    else { dw = cW; dh = dw / vRatio; dx = 0; dy = -(dh - cH)/2; }
-    if (isFacingUser) { tCtx.drawImage(vid, -dx - dw, dy, dw, dh); }
-    else { tCtx.drawImage(vid, dx, dy, dw, dh); }
-    tCtx.restore();
-
-    // 3. Apply mask — destination-in compositing
+    // STEP 3: Apply mask via destination-in — clips to exact mask shape.
+    // maskImg natural size == shapeBounds. Stretch to cW x cH to match canvas.
     const maskImg = previewMaskImages[slotIdx] || null;
     if (maskImg) {
-      tCtx.save();
-      tCtx.globalCompositeOperation = 'destination-in';
-      tCtx.drawImage(maskImg, 0, 0, cW, cH);
-      tCtx.restore();
+      sCtx.save();
+      sCtx.globalCompositeOperation = 'destination-in';
+      sCtx.drawImage(maskImg, 0, 0, cW, cH);
+      sCtx.restore();
     }
 
-    // 4. Compose: dark bg + masked camera on top
-    ctx.drawImage(tempCanvas, 0, 0);
+    // STEP 4: Composite onto main canvas — dark bg, then masked camera.
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, cW, cH);
+    ctx.fillStyle = '#111111';
+    ctx.fillRect(0, 0, cW, cH);
+    ctx.drawImage(slotCanvas, 0, 0);
 
-    // 5. Pink outline on edges of mask shape (subtle guide)
+    // STEP 5: Pink border outline following mask edge.
     if (maskImg) {
       ctx.save();
-      ctx.globalAlpha = 0.7;
       ctx.globalCompositeOperation = 'source-over';
-      // draw a slightly-scaled stroke outline
-      const edgeCanvas = document.createElement('canvas');
-      edgeCanvas.width = cW; edgeCanvas.height = cH;
-      const ectx = edgeCanvas.getContext('2d');
-      ectx.drawImage(maskImg, 0, 0, cW, cH);
-      ectx.globalCompositeOperation = 'source-in';
-      ectx.strokeStyle = '#ff2a85';
-      ectx.lineWidth = 4;
-      ectx.strokeRect(0, 0, cW, cH);
-      ctx.drawImage(edgeCanvas, 0, 0);
+      ctx.globalAlpha = 0.85;
+      const outlineCanvas = document.createElement('canvas');
+      outlineCanvas.width = cW; outlineCanvas.height = cH;
+      const oCtx = outlineCanvas.getContext('2d');
+      oCtx.drawImage(maskImg, 0, 0, cW, cH);
+      oCtx.globalCompositeOperation = 'source-atop';
+      oCtx.strokeStyle = '#ff2a85';
+      oCtx.lineWidth   = 6;
+      oCtx.strokeRect(3, 3, cW - 6, cH - 6);
+      ctx.drawImage(outlineCanvas, 0, 0);
       ctx.restore();
     }
 
