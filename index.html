@@ -16,7 +16,7 @@ const appManifest = {
 "background_color": "#ffdae0",
 "theme_color": "#ff2a85",
 "start_url": ".",
-"icons": [{"src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2ZmNGRhNiIvPjx0ZXh0IHk9IjY1IiB4PSI1MCIgZm9udC1zaXplPSI1MCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+77iPPC90ZXh0Pjwvc3ZnPg==","sizes": "192x192","type": "image/svg+xml"}]
+"icons": [{"src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2ZmNGRhNiIvPjx0ZXh0IHk9IjY1IiB4PSI1MCIgZm9ud-zaXplPSI1MCIgdGV4d-hbmNob3I9Im1pZGRsZSI+77iPPC90ZXh0Pjwvc3ZnPg==","sizes": "192x192","type": "image/svg+xml"}]
 };
 const blob = new Blob([JSON.stringify(appManifest)], {type: 'application/manifest+json'});
 const manifestURL = URL.createObjectURL(blob);
@@ -406,7 +406,7 @@ overflow: hidden;    /* 🎀 บังคับไม่ให้รูปทะ
 
 <script>
 // ==========================================
-// TINKLE PHOTO CLUB v47.0 — STABLE PRODUCTION-READY
+// TINKLE PHOTO CLUB v48.0 — HIGH STABILITY FOR OLDER DEVICES (iPhone 6 / iOS 12 Friendly)
 // One Single Render Function for Preview & Export.
 // POP ART Filter & MediaPipe AI Selfie Segmentation optimized for Older Devices
 // ==========================================
@@ -466,6 +466,12 @@ let slotAssetsData = [];
 let previewRAF = null;
 let shootInterval = null; 
 let cameraTimer = 5; 
+
+// 🎯 จัดเตรียม Shared Scratch Canvases เพื่อป้องกันการสร้าง Element ใหม่ซ้ำๆ ในหน่วยความจำ (แก้บั๊ก iPhone 6 ค้าง)
+let previewScratchCanvas = null;
+let previewScratchCtx = null;
+let slotScratchCanvas = null;
+let slotScratchCtx = null;
 
 // 🪄 AI Background Removal Variables
 let bgRemovalMode = 0; // 0=OFF, 1=PINK, 2=GRID, 3=CLOUDS, 4=HOLO
@@ -802,39 +808,57 @@ case 'REVIEW': forceHardReset(); navigate('FILTER'); break;
 }
 }
 
-// 🪄 ================= AI BACKGROUND REMOVAL LOGIC (Throttled for Performance) =================
+// 🪄 ================= AI BACKGROUND REMOVAL LOGIC (Throttled for Performance & Legacy Safari Guard) =================
 async function toggleBgRemoval() {
   playSfx('beep');
+
+  // 🎯 ดักจับเบราว์เซอร์เก่าที่ไม่รองรับ SelfieSegmentation (ป้องกัน ReferenceError เครื่องค้างบน iPhone 6)
+  if (typeof SelfieSegmentation === 'undefined') {
+    showAlert("ขออภัยด้วยนะคะ อุปกรณ์รุ่นเก่านี้ไม่รองรับระบบลบพื้นหลังอัจฉริยะค่ะ 🥺");
+    bgRemovalMode = 0;
+    updateBgBtnUI();
+    return;
+  }
+
   bgRemovalMode = (bgRemovalMode + 1) % BG_NAMES.length;
+  updateBgBtnUI();
+
+  if (bgRemovalMode !== 0 && !selfieSegmentation) {
+    const btn = $('bg-toggle-btn');
+    btn.innerText = `🪄 LOADING...`;
+    try {
+      selfieSegmentation = new SelfieSegmentation({locateFile: (file) => {
+        return `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`;
+      }});
+      selfieSegmentation.setOptions({ modelSelection: 1 });
+      
+      selfieSegmentation.onResults((results) => {
+        if (!hasAiLoaded) {
+          hasAiLoaded = true;
+          $('bg-toggle-btn').innerText = `🪄 BG: ${BG_NAMES[bgRemovalMode]}`;
+        }
+        onMediaPipeResults(results);
+      });
+    } catch(err) {
+      console.error("AI Initialization crashed:", err);
+      showAlert("บราวเซอร์หรือฮาร์ดแวร์รุ่นนี้ไม่รองรับระบบคัดแยกวัตถุ AI ค่ะ 🥺");
+      bgRemovalMode = 0;
+      updateBgBtnUI();
+      return;
+    }
+  }
+}
+
+function updateBgBtnUI() {
   const btn = $('bg-toggle-btn');
-  
+  if (!btn) return;
   if (bgRemovalMode !== 0) {
     btn.classList.add('bg-pink-500/80', 'border-pink-300');
     btn.classList.remove('bg-black/50', 'border-white/30');
+    btn.innerText = hasAiLoaded ? `🪄 BG: ${BG_NAMES[bgRemovalMode]}` : `🪄 LOADING...`;
   } else {
     btn.classList.remove('bg-pink-500/80', 'border-pink-300');
     btn.classList.add('bg-black/50', 'border-white/30');
-  }
-
-  if (bgRemovalMode !== 0 && !selfieSegmentation) {
-    btn.innerText = `🪄 LOADING...`;
-    selfieSegmentation = new SelfieSegmentation({locateFile: (file) => {
-      return `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`;
-    }});
-    selfieSegmentation.setOptions({ modelSelection: 1 });
-    
-    selfieSegmentation.onResults((results) => {
-      if (!hasAiLoaded) {
-        hasAiLoaded = true;
-        $('bg-toggle-btn').innerText = `🪄 BG: ${BG_NAMES[bgRemovalMode]}`;
-      }
-      onMediaPipeResults(results);
-    });
-  } else if (hasAiLoaded) {
-    btn.innerText = `🪄 BG: ${BG_NAMES[bgRemovalMode]}`;
-  } else if (bgRemovalMode !== 0 && !hasAiLoaded) {
-    btn.innerText = `🪄 LOADING...`;
-  } else {
     btn.innerText = `🪄 BG: OFF`;
   }
 }
@@ -889,7 +913,7 @@ async function processAILoop() {
   const vid = $('camera-video');
   const now = performance.now();
   
-  // 🎯 แก้ปัญหากล้องค้างในเครื่องเก่า: จำกัดทราฟฟิกภาพเข้า AI ไม่เกิน 12 FPS (ทุกๆ 80ms) และส่งภาพสเกลเล็ก 256x256
+  // 🎯 ปรับโครงสร้างเพื่อ iPhone 6: จำกัดทราฟฟิกภาพเข้า AI ไม่เกิน 12 FPS (ทุกๆ 80ms) และส่งภาพสเกลเล็ก 256x256 ป้องกัน GPU Overload
   if (bgRemovalMode !== 0 && selfieSegmentation && vid.readyState >= 2 && !vid.paused && (now - lastAiProcessedTime > 80)) {
     lastAiProcessedTime = now;
     try {
@@ -905,7 +929,7 @@ async function processAILoop() {
     } catch(e) { console.warn('MediaPipe error:', e); }
   }
   if (aiLoopActive) {
-    // ใช้ setTimeout แทน requestAnimationFrame เพื่อให้เครื่องระบบมีเวลาหายใจ
+    // ใช้ setTimeout แทน requestAnimationFrame เล็กน้อยเพื่อแบ่งปันทรัพยากรระบบให้เบราว์เซอร์ลื่นไหล
     setTimeout(processAILoop, 30);
   }
 }
@@ -921,8 +945,9 @@ $('tap-to-shoot-hint').classList.remove('hidden');
 $('timer-toggle-btn').innerText = `⏱️ ${cameraTimer}S`;
 
 try {
+// 🎯 ปรับลดความละเอียดวิดีโอให้เหมาะสมกับ iPhone 6 (ลดความร้อนและการกระตุก)
 stream = await navigator.mediaDevices.getUserMedia({
-video: { facingMode: isFacingUser ? 'user' : 'environment', width: {ideal:1280}, height: {ideal:720} }, audio: false
+video: { facingMode: isFacingUser ? 'user' : 'environment', width: {ideal: 640, max: 1280}, height: {ideal: 480, max: 720} }, audio: false
 });
 const vid = $('camera-video');
 vid.srcObject = stream;
@@ -976,19 +1001,24 @@ if (canvas.width !== cW || canvas.height !== cH) {
   canvas.width = cW; canvas.height = cH;
 }
 
-const offCanvas = document.createElement('canvas');
-offCanvas.width = cW; offCanvas.height = cH;
-const offCtx = offCanvas.getContext('2d');
+// 🎯 ปรับแก้ไขเพื่อ iPhone 6: Reuse Scratch Canvas ตัวเดิมแทนการสร้างขึ้นใหม่ในลูปแอนิเมชันเพื่อประหยัดแรมและลดขยะหน่วยความจำ
+if (!previewScratchCanvas) {
+  previewScratchCanvas = document.createElement('canvas');
+  previewScratchCtx = previewScratchCanvas.getContext('2d');
+}
+if (previewScratchCanvas.width !== cW || previewScratchCanvas.height !== cH) {
+  previewScratchCanvas.width = cW;
+  previewScratchCanvas.height = cH;
+}
 
 const sourceImage = (bgRemovalMode !== 0 && hasAiLoaded && lastProcessedCanvas.width > 0) ? lastProcessedCanvas : vid;
 
-renderOneSlot(offCtx, cW, cH, sourceImage, true, assets.maskImg, assets.overlayImg, null, currentFilter.css, slotIdx);
+renderOneSlot(previewScratchCtx, cW, cH, sourceImage, true, assets.maskImg, assets.overlayImg, null, currentFilter.css, slotIdx);
 
 const ctx = canvas.getContext('2d');
 ctx.clearRect(0, 0, cW, cH);
-ctx.drawImage(offCanvas, 0, 0);
+ctx.drawImage(previewScratchCanvas, 0, 0);
 
-offCanvas.width = 0; offCanvas.height = 0; 
 previewRAF = requestAnimationFrame(drawFrame);
 }
 drawFrame();
@@ -1191,6 +1221,12 @@ try { masterOverlayObj = await loadImage(currentFrame.overlay); } catch(e) {}
 const imgs = await Promise.all(capturedPhotos.map(src => loadImage(src)));
 const isTwinExport = currentLayout.type === 'twin-strip';
 
+// 🎯 ปรับแก้ไขเพื่อ iPhone 6: ใช้ Shared Scratch Canvas ตัวเดิมแทนการสร้าง Offscreen Canvas ซ้ำๆ ทุกช็อตตอนพิมพ์รูป
+if (!slotScratchCanvas) {
+  slotScratchCanvas = document.createElement('canvas');
+  slotScratchCtx = slotScratchCanvas.getContext('2d');
+}
+
 for (let i = 0; i < currentLayout.slots.length; i++) {
   const shotIndex = currentLayout.type === 'multiprint' ? 0 : i;
   if (shotIndex >= imgs.length) continue;
@@ -1200,37 +1236,31 @@ for (let i = 0; i < currentLayout.slots.length; i++) {
   const transform = photoTransforms[shotIndex] || {zoom:1, pctX:0, pctY:0};
 
   const rL = assets.region;
-  const scL = document.createElement('canvas');
-  scL.width = rL.w; scL.height = rL.h;
+  slotScratchCanvas.width = rL.w; 
+  slotScratchCanvas.height = rL.h;
   
   // 🎯 เคล็ดลับแก้บั๊ก Safari ไม่เรนเดอร์ CSS Filter บน offscreen canvas:
   // แอบนำ Canvas นี้เข้าสู่ DOM ชั่วคราวเพื่อให้ Engine ของ Safari ยอมประมวลผลคำสั่ง filter
-  scL.style.position = 'absolute';
-  scL.style.left = '-9999px';
-  scL.style.visibility = 'hidden';
-  document.body.appendChild(scL);
+  slotScratchCanvas.style.position = 'absolute';
+  slotScratchCanvas.style.left = '-9999px';
+  slotScratchCanvas.style.visibility = 'hidden';
+  document.body.appendChild(slotScratchCanvas);
   
-  renderOneSlot(scL.getContext('2d'), rL.w, rL.h, imgs[shotIndex], false, assets.maskImg, assets.overlayImg, transform, currentFilter.css, i);
-  ctx.drawImage(scL, rL.x0, rL.y0);
+  renderOneSlot(slotScratchCtx, rL.w, rL.h, imgs[shotIndex], false, assets.maskImg, assets.overlayImg, transform, currentFilter.css, i);
+  ctx.drawImage(slotScratchCanvas, rL.x0, rL.y0);
   
-  document.body.removeChild(scL);
-  scL.width = 0; scL.height = 0; // เคลียร์หน่วยความจำ
+  document.body.removeChild(slotScratchCanvas);
 
   if (isTwinExport && assets.regionRight) {
     const rR = assets.regionRight;
-    const scR = document.createElement('canvas');
-    scR.width = rR.w; scR.height = rR.h;
+    slotScratchCanvas.width = rR.w; 
+    slotScratchCanvas.height = rR.h;
     
-    scR.style.position = 'absolute';
-    scR.style.left = '-9999px';
-    scR.style.visibility = 'hidden';
-    document.body.appendChild(scR);
+    document.body.appendChild(slotScratchCanvas);
+    renderOneSlot(slotScratchCtx, rR.w, rR.h, imgs[shotIndex], false, assets.maskImgRight || assets.maskImg, assets.overlayImgRight || assets.overlayImg, transform, currentFilter.css, i + currentLayout.slots.length);
+    ctx.drawImage(slotScratchCanvas, rR.x0, rR.y0);
     
-    renderOneSlot(scR.getContext('2d'), rR.w, rR.h, imgs[shotIndex], false, assets.maskImgRight || assets.maskImg, assets.overlayImgRight || assets.overlayImg, transform, currentFilter.css, i + currentLayout.slots.length);
-    ctx.drawImage(scR, rR.x0, rR.y0);
-    
-    document.body.removeChild(scR);
-    scR.width = 0; scR.height = 0;
+    document.body.removeChild(slotScratchCanvas);
   }
 }
 
@@ -1305,6 +1335,34 @@ gifshot.createGIF({ images: filteredFrames, gifWidth: 400, gifHeight: 533, inter
 if(!obj.error) { finalGifUrl = obj.image; $('gif-controls').classList.remove('hidden'); setTimeout(() => { $('gif-controls').classList.add('opacity-100'); }, 50); }
 });
 } catch(e) {}
+}
+
+// 🎨 ฟังก์ชัน renderFilters สำหรับแสดงตัวเลือกฟิลเตอร์
+function renderFilters() {
+  $('filter-list-container').innerHTML = '';
+  FILTERS.forEach((filter, index) => {
+    const btn = document.createElement('div'); btn.id = `filter-btn-${index}`;
+    btn.className = `filter-item bg-white/90 backdrop-blur border-[3px] p-3 rounded-2xl shadow-sm flex flex-col items-center justify-center text-center cursor-pointer transition-transform active:scale-[0.95]`;
+    btn.onclick = () => { 
+      currentFilter = filter; 
+      updateFilterSelection(); 
+      playSfx('beep'); 
+      if (btn.classList.contains('selected')) setTimeout(() => navigate('CAMERA'), 200); 
+    };
+    const filterStyle = filter.css === 'popart' ? 'hue-rotate(90deg) saturate(1.8)' : filter.css;
+    btn.innerHTML = `<div class="w-12 h-12 rounded-full overflow-hidden mb-2 border-2 border-gray-200 shadow-inner bg-gray-300 relative"><div class="absolute inset-0 bg-cover bg-center" style="background-image:url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 fill=%22%23ffdae0%22/%3E%3Ctext x=%2230%22 y=%2260%22 font-size=%2240%22%3E📸%3C/text%3E%3C/svg%3E');filter:${filterStyle}"></div></div><h3 class="font-black text-[#6e6367] text-[10px] uppercase leading-tight">${filter.name}</h3>`;
+    $('filter-list-container').appendChild(btn);
+  });
+  updateFilterSelection();
+}
+
+// 🎨 ฟังก์ชัน updateFilterSelection สำหรับไฮไลท์ฟิลเตอร์ที่เลือก
+function updateFilterSelection() {
+  FILTERS.forEach((filter, index) => {
+    const btn = $(`filter-btn-${index}`); if (!btn) return;
+    if (currentFilter.id === filter.id) { btn.classList.add('selected', 'border-[#ff4d9a]', 'bg-[#fff0f5]'); btn.classList.remove('border-[#f2ede9]'); }
+    else { btn.classList.remove('selected', 'border-[#ff4d9a]', 'bg-[#fff0f5]'); btn.classList.add('border-[#f2ede9]'); }
+  });
 }
 
 function init() { 
@@ -1386,27 +1444,6 @@ function updateSelectedFrameUI() {
 if (!currentFrame) { $('selected-frame-name').innerText = 'No Frame'; $('selected-frame-thumb').innerHTML = '<div class="text-xl">✨</div>'; return; }
 $('selected-frame-thumb').innerHTML = `<img src="${currentFrame.overlay}" class="w-full h-full object-contain" crossorigin="anonymous"/>`;
 $('selected-frame-name').innerText = currentFrame.name;
-}
-
-function renderFilters() {
-$('filter-list-container').innerHTML = '';
-FILTERS.forEach((filter, index) => {
-const btn = document.createElement('div'); btn.id = `filter-btn-${index}`;
-btn.className = `filter-item bg-white/90 backdrop-blur border-[3px] p-3 rounded-2xl shadow-sm flex flex-col items-center justify-center text-center cursor-pointer transition-transform active:scale-[0.95]`;
-btn.onclick = () => { currentFilter = filter; updateFilterSelection(); playSfx('beep'); if (btn.classList.contains('selected')) setTimeout(() => navigate('CAMERA'), 200); };
-const filterStyle = filter.css === 'popart' ? 'hue-rotate(90deg) saturate(1.8)' : filter.css;
-btn.innerHTML = `<div class="w-12 h-12 rounded-full overflow-hidden mb-2 border-2 border-gray-200 shadow-inner bg-gray-300 relative"><div class="absolute inset-0 bg-cover bg-center" style="background-image:url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 fill=%22%23ffdae0%22/%3E%3Ctext x=%2230%22 y=%2260%22 font-size=%2240%22%3E📸%3C/text%3E%3C/svg%3E');filter:${filterStyle}"></div></div><h3 class="font-black text-[#6e6367] text-[10px] uppercase leading-tight">${filter.name}</h3>`;
-$('filter-list-container').appendChild(btn);
-});
-updateFilterSelection();
-}
-
-function updateFilterSelection() {
-FILTERS.forEach((filter, index) => {
-const btn = $(`filter-btn-${index}`); if (!btn) return;
-if (currentFilter.id === filter.id) { btn.classList.add('selected', 'border-[#ff4d9a]', 'bg-[#fff0f5]'); btn.classList.remove('border-[#f2ede9]'); }
-else { btn.classList.remove('selected', 'border-[#ff4d9a]', 'bg-[#fff0f5]'); btn.classList.add('border-[#f2ede9]'); }
-});
 }
 
 async function shareFile(dataUrl, filename, mimeType) {
