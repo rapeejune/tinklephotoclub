@@ -691,15 +691,10 @@ async function startPreviewLoop() {
     const slot    = slots[slotIdx] || slots[0];
     if (!slot) { previewRAF = requestAnimationFrame(drawFrame); return; }
 
-    // STEP 1: Canvas dimensions = shapeBounds of THIS slot only.
-    // shapeBounds = tight rect around opaque mask pixels.
-    // Camera feed must be independently centered inside THIS rect from origin (0,0).
-    // No global coordinates. No reference to other slots.
     const sW = slot.shapeBounds.w;
     const sH = slot.shapeBounds.h;
-
     const container = $('camera-viewport');
-    const maxW = container ? container.clientWidth  : 260;
+    const maxW = container ? container.clientWidth : 260;
     const scaleToFit = maxW / sW;
     const cW = Math.round(sW * scaleToFit);
     const cH = Math.round(sH * scaleToFit);
@@ -712,14 +707,24 @@ async function startPreviewLoop() {
       if (container) container.style.aspectRatio = `${sW}/${sH}`;
     }
 
-    // STEP 2: Draw camera feed into an isolated slot-local canvas (cW x cH).
-    // Cover-fit video into (cW x cH). Origin = top-left of THIS slot's bounds.
-    // This is a completely independent viewport — no global canvas reference.
-    const slotCanvas = document.createElement('canvas');
-    slotCanvas.width  = cW;
-    slotCanvas.height = cH;
-    const sCtx = slotCanvas.getContext('2d');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, cW, cH);
 
+    const maskImg = previewMaskImages[slotIdx] || null;
+
+    // ── PIPELINE ────────────────────────────────────────────────────────────
+    // Layer A: solid black background (outside mask stays black)
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, cW, cH);
+
+    // Layer B: camera feed — draw onto isolated offscreen canvas first,
+    //          clip it hard with destination-in mask, then blit result.
+    //          This ensures ZERO camera pixels leak outside mask shape.
+    const camCanvas = document.createElement('canvas');
+    camCanvas.width = cW; camCanvas.height = cH;
+    const cCtx = camCanvas.getContext('2d');
+
+    // Cover-fit video into cW×cH — slot-local origin only
     const vW = vid.videoWidth  || 640;
     const vH = vid.videoHeight || 480;
     const vRatio = vW / vH;
@@ -730,49 +735,24 @@ async function startPreviewLoop() {
     const drawX = (cW - drawW) / 2;
     const drawY = (cH - drawH) / 2;
 
-    sCtx.save();
-    sCtx.filter = currentFilter.css !== 'none' ? currentFilter.css : 'none';
-    if (isFacingUser) {
-      // Mirror horizontally around canvas center
-      sCtx.translate(cW, 0);
-      sCtx.scale(-1, 1);
-    }
-    sCtx.drawImage(vid, drawX, drawY, drawW, drawH);
-    sCtx.restore();
+    cCtx.save();
+    if (isFacingUser) { cCtx.translate(cW, 0); cCtx.scale(-1, 1); }
+    if (currentFilter.css !== 'none') cCtx.filter = currentFilter.css;
+    cCtx.drawImage(vid, drawX, drawY, drawW, drawH);
+    cCtx.restore();
 
-    // STEP 3: Apply mask via destination-in — clips to exact mask shape.
-    // maskImg natural size == shapeBounds. Stretch to cW x cH to match canvas.
-    const maskImg = previewMaskImages[slotIdx] || null;
+    // Hard clip camera to mask — destination-in removes ALL pixels outside mask.
+    // No feathering, no edge bleed, no partial alpha.
     if (maskImg) {
-      sCtx.save();
-      sCtx.globalCompositeOperation = 'destination-in';
-      sCtx.drawImage(maskImg, 0, 0, cW, cH);
-      sCtx.restore();
+      cCtx.globalCompositeOperation = 'destination-in';
+      cCtx.drawImage(maskImg, 0, 0, cW, cH);
+      cCtx.globalCompositeOperation = 'source-over'; // reset
     }
 
-    // STEP 4: Composite onto main canvas — dark bg, then masked camera.
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, cW, cH);
-    ctx.fillStyle = '#111111';
-    ctx.fillRect(0, 0, cW, cH);
-    ctx.drawImage(slotCanvas, 0, 0);
-
-    // STEP 5: Pink border outline following mask edge.
-    if (maskImg) {
-      ctx.save();
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 0.85;
-      const outlineCanvas = document.createElement('canvas');
-      outlineCanvas.width = cW; outlineCanvas.height = cH;
-      const oCtx = outlineCanvas.getContext('2d');
-      oCtx.drawImage(maskImg, 0, 0, cW, cH);
-      oCtx.globalCompositeOperation = 'source-atop';
-      oCtx.strokeStyle = '#ff2a85';
-      oCtx.lineWidth   = 6;
-      oCtx.strokeRect(3, 3, cW - 6, cH - 6);
-      ctx.drawImage(outlineCanvas, 0, 0);
-      ctx.restore();
-    }
+    // Blit clipped camera onto black background using source-over.
+    // Transparent pixels in camCanvas reveal the black bg — clean hard edge.
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.drawImage(camCanvas, 0, 0);
 
     previewRAF = requestAnimationFrame(drawFrame);
   }
