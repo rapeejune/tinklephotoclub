@@ -571,7 +571,9 @@ function forceHardReset() {
   if (previewRAF) { cancelAnimationFrame(previewRAF); previewRAF = null; }
 
   capturedPhotos = []; photoTransforms = []; capturedPhotoRatios = [];
-  retakeTargetIndex = -1; activePhotoIndex = 0; isShooting = false; slotAssetsData = [];
+  retakeTargetIndex = -1; activePhotoIndex = 0; isShooting = false;
+  // ★ Do NOT clear slotAssetsData here — it's keyed by frame+layout and cached
+  // It only needs reset when frame/layout actually changes (handled in navigate/renderFrameGrid)
 
   const cCanvas = $('preview-canvas');
   if (cCanvas) { const ctx = cCanvas.getContext('2d'); ctx.clearRect(0,0,cCanvas.width,cCanvas.height); }
@@ -602,17 +604,38 @@ function detectBlackComponents(imageData, W, H) {
   return results;
 }
 
-// ✅ FIX 6: extractLayoutAssets processes slots SEQUENTIALLY to avoid RAM spike
+// ── extractLayoutAssets ────────────────────────────────────────────────────────
+// KEY FIXES:
+//  • Process mask at HALF resolution (600×900) — reduces getImageData work by 75%
+//  • Cache result keyed by frameId+layoutId — never re-process the same combo
+//  • Show loading spinner in camera area while processing
+let assetsCache = {}; // key: `${frameId}_${layoutId}` → slotAssetsData array
+
 async function extractLayoutAssets() {
   slotAssetsData = [];
   if (!currentLayout) return;
 
+  const cacheKey = `${currentFrame ? currentFrame.id : 'noframe'}_${currentLayout.id}`;
+  if (assetsCache[cacheKey]) {
+    slotAssetsData = assetsCache[cacheKey];
+    return;
+  }
+
+  // Show loading state in counter badge
+  const badge = $('shot-counter-text');
+  const origBadge = badge ? badge.innerText : '';
+  if (badge) badge.innerText = 'LOADING...';
+
   const master = MASTER_CANVAS[currentLayout.canvas];
+  // ★ Work at half resolution to cut memory & CPU by 75%
+  const SCALE  = 0.5;
+  const mW = Math.round(master.w * SCALE);
+  const mH = Math.round(master.h * SCALE);
+
   let markImg = null, overlayImg = null;
 
   if (currentFrame) {
     try {
-      // Load mask and overlay one at a time
       if (currentFrame.mask)    markImg    = await loadImage(currentFrame.mask);
       if (currentFrame.overlay) overlayImg = await loadImage(currentFrame.overlay);
     } catch(e) { console.warn('[Tinkle] asset load:', e); }
@@ -620,68 +643,99 @@ async function extractLayoutAssets() {
 
   if (!markImg) {
     currentLayout.slots.forEach(slot => {
-      slotAssetsData.push({ region:{x0:slot.x,y0:slot.y,x1:slot.x+slot.w,y1:slot.y+slot.h,w:slot.w,h:slot.h,cx:slot.x+slot.w/2,cy:slot.y+slot.h/2}, maskImg:null, overlayImg:null });
+      // Scale slot coords back to master space (no scaling needed for region math)
+      slotAssetsData.push({
+        region: { x0:slot.x, y0:slot.y, x1:slot.x+slot.w, y1:slot.y+slot.h,
+                  w:slot.w, h:slot.h, cx:slot.x+slot.w/2, cy:slot.y+slot.h/2 },
+        maskImg: null, overlayImg: null
+      });
     });
+    if (badge) badge.innerText = origBadge;
+    assetsCache[cacheKey] = slotAssetsData;
     return;
   }
 
+  // Draw mask at half resolution
   const mCvs = document.createElement('canvas');
-  mCvs.width = master.w; mCvs.height = master.h;
+  mCvs.width = mW; mCvs.height = mH;
   const mCtx = mCvs.getContext('2d', { willReadFrequently: true });
-  mCtx.drawImage(markImg, 0, 0, master.w, master.h);
+  mCtx.drawImage(markImg, 0, 0, mW, mH);
+  await new Promise(r => setTimeout(r, 0)); // yield after heavy draw
 
+  // Draw overlay at half resolution
   const oCvs = document.createElement('canvas');
-  oCvs.width = master.w; oCvs.height = master.h;
-  if (overlayImg) oCvs.getContext('2d').drawImage(overlayImg, 0, 0, master.w, master.h);
+  oCvs.width = mW; oCvs.height = mH;
+  if (overlayImg) oCvs.getContext('2d').drawImage(overlayImg, 0, 0, mW, mH);
 
-  const allRegions = detectBlackComponents(mCtx.getImageData(0,0,master.w,master.h), master.w, master.h);
+  // getImageData at half size = 4× fewer pixels to scan
+  const imageData  = mCtx.getImageData(0, 0, mW, mH);
+  const allRegions = detectBlackComponents(imageData, mW, mH);
+
+  // Scale detected regions back to full master coordinates
+  const scaleRegion = r => ({
+    x0: Math.round(r.x0/SCALE), y0: Math.round(r.y0/SCALE),
+    x1: Math.round(r.x1/SCALE), y1: Math.round(r.y1/SCALE),
+    w:  Math.round(r.w /SCALE), h:  Math.round(r.h /SCALE),
+    cx: Math.round(r.cx/SCALE), cy: Math.round(r.cy/SCALE),
+  });
 
   const isTwin  = currentLayout.type === 'twin-strip';
-  const halfW   = master.w / 2;
+  const halfW   = mW / 2;
   const nSlots  = currentLayout.slots.length;
 
-  let leftRegions = allRegions.filter(r => r.cx < halfW).sort((a,b)=>a.cy-b.cy).slice(0,nSlots);
+  let leftRegions = allRegions.filter(r => r.cx < halfW).sort((a,b)=>a.cy-b.cy).slice(0, nSlots);
   let rightRegions = [];
   if (isTwin) {
-    rightRegions = allRegions.filter(r=>r.cx>=halfW).sort((a,b)=>a.cy-b.cy).slice(0,nSlots);
+    rightRegions = allRegions.filter(r=>r.cx>=halfW).sort((a,b)=>a.cy-b.cy).slice(0, nSlots);
     if (rightRegions.length < nSlots)
-      rightRegions = leftRegions.map(r=>({...r,x0:r.x0+halfW,x1:r.x1+halfW,cx:r.cx+halfW}));
+      rightRegions = leftRegions.map(r=>({...r, x0:r.x0+halfW, x1:r.x1+halfW, cx:r.cx+halfW}));
   }
 
+  // Build mask/overlay crops at FULL resolution (for quality export)
+  // but using a fresh canvas each time (freed immediately after toDataURL)
+  const fullOCvs = document.createElement('canvas');
+  fullOCvs.width = master.w; fullOCvs.height = master.h;
+  if (overlayImg) fullOCvs.getContext('2d').drawImage(overlayImg, 0, 0, master.w, master.h);
+
+  const fullMCvs = document.createElement('canvas');
+  fullMCvs.width = master.w; fullMCvs.height = master.h;
+  const fullMCtx = fullMCvs.getContext('2d', { willReadFrequently: true });
+  if (markImg) fullMCtx.drawImage(markImg, 0, 0, master.w, master.h);
+  await new Promise(r => setTimeout(r, 0)); // yield after heavy draw
+
   function buildMask(region) {
-    const c=document.createElement('canvas'); c.width=region.w; c.height=region.h;
-    const ctx=c.getContext('2d');
-    const src=mCtx.getImageData(region.x0,region.y0,region.w,region.h);
-    const dst=ctx.createImageData(region.w,region.h);
-    for(let i=0;i<src.data.length;i+=4){ const ok=src.data[i+3]>200&&src.data[i]<50&&src.data[i+1]<50&&src.data[i+2]<50; dst.data[i+3]=ok?255:0; }
-    ctx.putImageData(dst,0,0); return c;
+    const c = document.createElement('canvas'); c.width = region.w; c.height = region.h;
+    const ctx = c.getContext('2d');
+    const src = fullMCtx.getImageData(region.x0, region.y0, region.w, region.h);
+    const dst = ctx.createImageData(region.w, region.h);
+    for (let i=0; i<src.data.length; i+=4) {
+      dst.data[i+3] = (src.data[i+3]>200 && src.data[i]<50 && src.data[i+1]<50 && src.data[i+2]<50) ? 255 : 0;
+    }
+    ctx.putImageData(dst, 0, 0); return c;
   }
   function sliceOverlay(region) {
-    const c=document.createElement('canvas'); c.width=region.w; c.height=region.h;
-    c.getContext('2d').drawImage(oCvs,region.x0,region.y0,region.w,region.h,0,0,region.w,region.h);
+    const c = document.createElement('canvas'); c.width = region.w; c.height = region.h;
+    c.getContext('2d').drawImage(fullOCvs, region.x0, region.y0, region.w, region.h, 0, 0, region.w, region.h);
     return c;
   }
 
-  // ✅ Process each slot one at a time, yield to browser between slots
   for (let i = 0; i < nSlots; i++) {
-    const regionL = leftRegions[i];
-    if (!regionL) { slotAssetsData.push(null); continue; }
+    const rSmall = leftRegions[i];
+    if (!rSmall) { slotAssetsData.push(null); continue; }
+    const regionL = scaleRegion(rSmall);
 
     const maskLCvs    = buildMask(regionL);
     const overlayLCvs = overlayImg ? sliceOverlay(regionL) : null;
-
     const entry = {
       region:     regionL,
       maskImg:    await loadImage(maskLCvs.toDataURL('image/png')),
       overlayImg: overlayLCvs ? await loadImage(overlayLCvs.toDataURL('image/png')) : null,
     };
-
-    // Free temp canvases immediately
     maskLCvs.width = 0; maskLCvs.height = 0;
     if (overlayLCvs) { overlayLCvs.width = 0; overlayLCvs.height = 0; }
 
     if (isTwin && rightRegions[i]) {
-      const regionR    = rightRegions[i];
+      const regionR    = scaleRegion(rightRegions[i]);
       const maskRCvs   = buildMask(regionR);
       const overlayRCvs = overlayImg ? sliceOverlay(regionR) : null;
       entry.regionRight     = regionR;
@@ -692,14 +746,17 @@ async function extractLayoutAssets() {
     }
 
     slotAssetsData.push(entry);
-
-    // ✅ FIX 7: yield to browser every slot so UI doesn't freeze
-    await new Promise(r => setTimeout(r, 0));
+    await new Promise(r => setTimeout(r, 0)); // yield between slots
   }
 
-  // Free master canvases
+  // Free all canvases
   mCvs.width = 0; mCvs.height = 0;
   oCvs.width = 0; oCvs.height = 0;
+  fullMCvs.width = 0; fullMCvs.height = 0;
+  fullOCvs.width = 0; fullOCvs.height = 0;
+
+  if (badge) badge.innerText = origBadge;
+  assetsCache[cacheKey] = slotAssetsData; // ★ cache so we never recompute
 }
 
 // ── Core render function ──────────────────────────────────────────────────────
@@ -771,7 +828,12 @@ function navigate(screenName) {
   if (screen) screen.classList.add('active');
 
   if (screenName === 'FRAME') { updateSelectedFrameUI(); }
-  else if (screenName === 'CAMERA') { slotAssetsData = []; startCamera(); }
+  else if (screenName === 'CAMERA') {
+    // Only re-extract assets if not already cached for current frame+layout combo
+    const cacheKey = `${currentFrame ? currentFrame.id : 'noframe'}_${currentLayout ? currentLayout.id : 'nolayout'}`;
+    if (!assetsCache[cacheKey]) slotAssetsData = [];
+    startCamera();
+  }
   else {
     // Stop camera & loops when leaving CAMERA screen
     if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
@@ -795,21 +857,18 @@ function goBack(step) {
 }
 
 // ── AI Background Removal ─────────────────────────────────────────────────────
-// ✅ FIX 8: MediaPipe loaded LAZILY — only when user taps BG button
 async function toggleBgRemoval() {
   playSfx('beep');
 
   bgRemovalMode = (bgRemovalMode + 1) % BG_NAMES.length;
   updateBgBtnUI();
 
-  if (bgRemovalMode === 0) return; // turning off — nothing to load
-
-  if (mediaPipeLoading) return; // already loading
+  if (bgRemovalMode === 0) return;   // turned off
+  if (mediaPipeLoading) return;      // already initializing
 
   if (!selfieSegmentation) {
-    // Check if the library script is available
+    // ── Step 1: Load the JS bundle if not yet loaded ──────────────────────────
     if (typeof SelfieSegmentation === 'undefined') {
-      // Try to load it now
       mediaPipeLoading = true;
       updateBgBtnUI();
       try {
@@ -817,39 +876,53 @@ async function toggleBgRemoval() {
           const s = document.createElement('script');
           s.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js';
           s.crossOrigin = 'anonymous';
-          s.onload = resolve;
-          s.onerror = reject;
+          s.onload = resolve; s.onerror = reject;
           document.head.appendChild(s);
         });
       } catch(e) {
-        mediaPipeLoading = false;
-        bgRemovalMode = 0; updateBgBtnUI();
-        showAlert('ไม่สามารถโหลดระบบลบพื้นหลังได้ค่ะ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต 🥺');
+        mediaPipeLoading = false; bgRemovalMode = 0; updateBgBtnUI();
+        showAlert('ไม่สามารถโหลดระบบลบพื้นหลังได้ค่ะ กรุณาตรวจสอบอินเทอร์เน็ต 🥺');
         return;
       }
     }
 
     if (typeof SelfieSegmentation === 'undefined') {
-      mediaPipeLoading = false;
-      bgRemovalMode = 0; updateBgBtnUI();
+      mediaPipeLoading = false; bgRemovalMode = 0; updateBgBtnUI();
       showAlert('ขออภัยค่ะ อุปกรณ์นี้ไม่รองรับระบบลบพื้นหลัง 🥺');
       return;
     }
 
+    // ── Step 2: Construct + configure ────────────────────────────────────────
     try {
-      selfieSegmentation = new SelfieSegmentation({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${f}` });
-      selfieSegmentation.setOptions({ modelSelection: 1 });
+      selfieSegmentation = new SelfieSegmentation({
+        locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${f}`
+      });
+      // modelSelection 0 = general (lighter), 1 = landscape (heavier but better)
+      // Use lighter model on Tier 1 devices
+      selfieSegmentation.setOptions({ modelSelection: DEVICE.tier === 1 ? 0 : 1 });
       selfieSegmentation.onResults(onMediaPipeResults);
     } catch(err) {
-      mediaPipeLoading = false;
-      bgRemovalMode = 0; updateBgBtnUI();
+      mediaPipeLoading = false; bgRemovalMode = 0; updateBgBtnUI();
       showAlert('อุปกรณ์รุ่นนี้ไม่รองรับระบบ AI ค่ะ 🥺');
       return;
     }
+
+    // ── Step 3: initialize() — THIS IS THE CRITICAL MISSING STEP ─────────────
+    // Without initialize(), send() silently does nothing on iOS Safari.
+    // We must await it fully before the first send().
+    try {
+      await selfieSegmentation.initialize();
+    } catch(err) {
+      console.warn('[MediaPipe] initialize() failed:', err);
+      // Non-fatal on some browsers — continue anyway
+    }
+
+    hasAiLoaded = true;
     mediaPipeLoading = false;
+    updateBgBtnUI();
   }
 
-  // Start AI loop if not already running
+  // ── Step 4: Start the send loop ───────────────────────────────────────────
   if (!aiLoopRunning) {
     aiLoopRunning = true;
     aiLoop();
@@ -861,7 +934,7 @@ function updateBgBtnUI() {
   if (bgRemovalMode !== 0) {
     btn.classList.add('bg-pink-500/80','border-pink-300');
     btn.classList.remove('bg-black/50','border-white/30');
-    btn.innerText = mediaPipeLoading ? '🪄 LOADING...' : `🪄 BG: ${BG_NAMES[bgRemovalMode]}`;
+    btn.innerText = mediaPipeLoading ? '🪄 AI LOADING...' : `🪄 BG: ${BG_NAMES[bgRemovalMode]}`;
   } else {
     btn.classList.remove('bg-pink-500/80','border-pink-300');
     btn.classList.add('bg-black/50','border-white/30');
@@ -872,26 +945,34 @@ function updateBgBtnUI() {
 function onMediaPipeResults(results) {
   const vid = $('camera-video');
   if (!vid || vid.readyState < 2) return;
-  if (!hasAiLoaded) { hasAiLoaded = true; updateBgBtnUI(); }
 
   const vw = vid.videoWidth || 640, vh = vid.videoHeight || 480;
-  lastProcessedCanvas.width = vw; lastProcessedCanvas.height = vh;
-  const ctx = lastProcessedCanvas.getContext('2d');
-  ctx.clearRect(0,0,vw,vh);
-  ctx.drawImage(results.segmentationMask, 0,0, vw,vh);
-  ctx.globalCompositeOperation = 'source-in';
-  ctx.drawImage(vid,0,0,vw,vh);
-  ctx.globalCompositeOperation = 'destination-over';
-  if (bgRemovalMode===1) { ctx.fillStyle='#ffdae0'; }
-  else if (bgRemovalMode===2) { ctx.fillStyle=getGridPattern(ctx); }
-  else if (bgRemovalMode===3) { ctx.fillStyle=getCloudPattern(ctx); }
-  else if (bgRemovalMode===4) {
-    const g=ctx.createLinearGradient(0,0,vw,vh);
-    g.addColorStop(0,'#ff9a9e'); g.addColorStop(0.5,'#fecfef'); g.addColorStop(1,'#a1c4fd');
-    ctx.fillStyle=g;
+  // Reuse canvas — only resize if dimensions changed (avoids GPU texture realloc every frame)
+  if (lastProcessedCanvas.width !== vw || lastProcessedCanvas.height !== vh) {
+    lastProcessedCanvas.width = vw; lastProcessedCanvas.height = vh;
   }
-  if (bgRemovalMode!==0) ctx.fillRect(0,0,vw,vh);
-  ctx.globalCompositeOperation='source-over';
+  const ctx = lastProcessedCanvas.getContext('2d');
+  ctx.clearRect(0, 0, vw, vh);
+
+  // 1. Draw the segmentation mask (white = person, black = background)
+  ctx.drawImage(results.segmentationMask, 0, 0, vw, vh);
+
+  // 2. Composite person pixels on top (keep only person-shaped pixels)
+  ctx.globalCompositeOperation = 'source-in';
+  ctx.drawImage(vid, 0, 0, vw, vh);
+
+  // 3. Draw chosen background behind the person
+  ctx.globalCompositeOperation = 'destination-over';
+  if      (bgRemovalMode === 1) { ctx.fillStyle = '#ffdae0'; }
+  else if (bgRemovalMode === 2) { ctx.fillStyle = getGridPattern(ctx) || '#fff0f5'; }
+  else if (bgRemovalMode === 3) { ctx.fillStyle = getCloudPattern(ctx) || '#d6e8f9'; }
+  else if (bgRemovalMode === 4) {
+    const g = ctx.createLinearGradient(0, 0, vw, vh);
+    g.addColorStop(0, '#ff9a9e'); g.addColorStop(0.5, '#fecfef'); g.addColorStop(1, '#a1c4fd');
+    ctx.fillStyle = g;
+  }
+  if (bgRemovalMode !== 0) ctx.fillRect(0, 0, vw, vh);
+  ctx.globalCompositeOperation = 'source-over';
 }
 
 // ── AI loop: interval and input size scale with device tier ───────────────────
@@ -1010,7 +1091,9 @@ function startPreviewLoop() {
       previewScratchCanvas.height = cH;
     }
 
-    const sourceImage = (bgRemovalMode !== 0 && hasAiLoaded && lastProcessedCanvas.width > 0) ? lastProcessedCanvas : vid;
+    // Use AI-processed canvas once MediaPipe has delivered at least one frame
+    const sourceImage = (bgRemovalMode !== 0 && hasAiLoaded && lastProcessedCanvas.width > 0)
+      ? lastProcessedCanvas : vid;
     renderOneSlot(previewScratchCtx, cW, cH, sourceImage, true, assets.maskImg, assets.overlayImg, null, currentFilter.css, slotIdx);
 
     const ctx = canvas.getContext('2d');
@@ -1351,8 +1434,8 @@ function updateCarousel(){
   activeLayouts.forEach((_,i)=>{ $('carousel-dots').innerHTML+=`<div class="w-2 h-2 rounded-full transition-colors ${i===carouselIndex?'bg-[#ff4d9a]':'bg-gray-300'}"></div>`; });
   filterAvailableFrames(); updateSelectedFrameUI(); renderFrameTabs(); renderFrameGrid();
 }
-function prevLayout(){ carouselIndex=(carouselIndex-1+activeLayouts.length)%activeLayouts.length; forceHardReset(); updateCarousel(); }
-function nextLayout(){ carouselIndex=(carouselIndex+1)%activeLayouts.length; forceHardReset(); updateCarousel(); }
+function prevLayout(){ carouselIndex=(carouselIndex-1+activeLayouts.length)%activeLayouts.length; slotAssetsData=[]; assetsCache={}; forceHardReset(); updateCarousel(); }
+function nextLayout(){ carouselIndex=(carouselIndex+1)%activeLayouts.length; slotAssetsData=[]; assetsCache={}; forceHardReset(); updateCarousel(); }
 function confirmLayout(){ playSfx('beep'); const card=$('carousel-layout-card'); if(card){card.style.transform='scale(0.95)'; setTimeout(()=>{card.style.transform='none'; navigate('FRAME');},150);} else navigate('FRAME'); }
 
 let carouselStartX=0;
@@ -1371,7 +1454,7 @@ function renderFrameGrid(){
   availableFrames.forEach(frame=>{
     const btn=document.createElement('div'); const sel=currentFrame&&currentFrame.id===frame.id;
     btn.className=`frame-thumb bg-white/90 backdrop-blur border-[3px] border-[#f2ede9] p-1.5 rounded-xl shadow-sm flex flex-col items-center justify-center text-center cursor-pointer active:scale-[0.95] ${sel?'selected border-[#ff4d9a] bg-[#fff0f5]':''}`;
-    btn.onclick=()=>{ currentFrame=frame; slotAssetsData=[]; forceHardReset(); renderFrameGrid(); updateSelectedFrameUI(); playSfx('beep'); };
+    btn.onclick=()=>{ currentFrame=frame; slotAssetsData=[]; assetsCache={}; renderFrameGrid(); updateSelectedFrameUI(); playSfx('beep'); };
     btn.innerHTML=`<div class="w-full aspect-square mb-1 rounded border border-gray-200 shadow-inner relative overflow-hidden bg-gray-100 flex items-center justify-center"><img src="${frame.overlay}" style="width:100%;height:100%;object-fit:contain;" crossorigin="anonymous" onerror="this.style.opacity='0.3'"/></div><h3 class="font-black text-[#6e6367] text-[7px] uppercase leading-tight truncate w-full">${frame.name}</h3>`;
     c.appendChild(btn);
   });
@@ -1394,10 +1477,15 @@ function downloadImage(){ if(!finalComposedUrl) return; const a=document.createE
 function downloadGif(){ if(!finalGifUrl) return; const a=document.createElement('a'); a.href=finalGifUrl; a.download=`tinkle_animation_${Date.now()}.gif`; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
 
 function resetApp(){
-  forceHardReset(); currentMode='multi'; activeLayouts=[]; carouselIndex=0; currentLayout=null; currentFrame=null; currentFilter=FILTERS[0]; updateFilterSelection();
+  forceHardReset();
+  currentMode='multi'; activeLayouts=[]; carouselIndex=0;
+  currentLayout=null; currentFrame=null; currentFilter=FILTERS[0]; updateFilterSelection();
+  slotAssetsData=[]; assetsCache={}; // ★ clear cached mask assets
   const zs=$('review-zoom-slider'); if(zs) zs.value=1; $('final-image').src='';
   const gc=$('gif-controls'); if(gc){gc.classList.add('hidden','opacity-0');gc.classList.remove('opacity-100');}
+  // ★ Full MediaPipe teardown so next use re-initializes cleanly
   bgRemovalMode=0; hasAiLoaded=false; mediaPipeLoading=false;
+  selfieSegmentation=null; aiLoopRunning=false;
   const bgBtn=$('bg-toggle-btn');
   if(bgBtn){ bgBtn.innerText='🪄 BG: OFF'; bgBtn.classList.remove('bg-pink-500/80','border-pink-300'); bgBtn.classList.add('bg-black/50','border-white/30'); }
   navigate('HOME');
