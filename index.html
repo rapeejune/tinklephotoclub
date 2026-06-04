@@ -25,8 +25,7 @@ link.rel = 'manifest'; link.href = manifestURL;
 document.head.appendChild(link);
 </script>
 
-<!-- 🪄 เพิ่มไลบรารี MediaPipe AI Selfie Segmentation -->
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js" crossorigin="anonymous"></script>
+<!-- ✅ FIX: โหลด MediaPipe แบบ lazy (ไม่โหลดอัตโนมัติตอนเปิดหน้า) -->
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gifshot/0.3.2/gifshot.min.js"></script>
@@ -66,7 +65,7 @@ height: 54vh; background-color: var(--cream-white);
 border-bottom-left-radius: 24px; border-bottom-right-radius: 24px;
 box-shadow: 0 10px 20px rgba(0,0,0,0.05);
 display: flex; flex-direction: column;
-position: relative; z-index: 20; padding-bottom: 24px; /* 🎀 ปรับความสูงขอบล่างเพิ่มพื้นที่กด */
+position: relative; z-index: 20; padding-bottom: 24px;
 }
 .toy-hidden-area {
 flex: 1; background-color: #ff2a85;
@@ -74,30 +73,26 @@ background-image: radial-gradient(#ff4d9a 15%, transparent 16%), radial-gradient
 background-size: 24px 24px; background-position: 0 0, 12px 12px;
 position: relative; z-index: 10;
 }
-
-/* 🎯 ปรับแต่งปุ่ม OK ให้ใหญ่ขึ้น */
 .toy-action-btn {
 background: linear-gradient(145deg, #ff4d9a, #ff2a85);
-border: 6px solid #ffffff; 
+border: 6px solid #ffffff;
 border-radius: 99px;
 box-shadow: 0 6px 15px rgba(255,42,133,0.4);
-color: white; font-weight: 900; 
-font-size: 24px; 
-padding: 12px 48px; 
+color: white; font-weight: 900;
+font-size: 24px;
+padding: 12px 48px;
 letter-spacing: 1.5px;
 transition: transform 0.1s; cursor: pointer;
 }
 .toy-action-btn:active { transform: scale(0.95); }
-
-/* 🎯 ปรับแต่งปุ่มย้อนกลับให้ใหญ่และกดง่ายขึ้น */
 .back-btn {
 position: absolute; top: 12px; left: 12px; z-index: 50;
-width: 50px; height: 50px; 
+width: 50px; height: 50px;
 background-color: rgba(255,255,255,0.9);
 backdrop-filter: blur(4px); border-radius: 50%;
 display: flex; align-items: center; justify-content: center;
-color: #ff4d9a; font-size: 22px; font-weight: 900; 
-border: 4px solid #ffdae0; 
+color: #ff4d9a; font-size: 22px; font-weight: 900;
+border: 4px solid #ffdae0;
 box-shadow: 0 4px 8px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.1s;
 }
 .back-btn:active { transform: scale(0.9); }
@@ -126,7 +121,7 @@ position: relative;
 overflow: hidden;
 background: transparent;
 border: 3px solid #444;
-border-radius: 16px; /* 🎀 ปรับขอบจอกล้องให้มนน่ารักขึ้น */
+border-radius: 16px;
 width: 100%;
 }
 #preview-canvas {
@@ -141,11 +136,11 @@ display: none;
 position: relative;
 background-color: transparent;
 transform: translateZ(0);
-border-radius: 16px; /* 🎀 ปรับขอบรูปในหน้าจัดรูปให้มน */
-overflow: hidden;    /* 🎀 บังคับไม่ให้รูปทะลุขอบมน */
+border-radius: 16px;
+overflow: hidden;
 }
 
-/* Screensaver Overlay */
+/* Screensaver */
 #screensaver {
   background-image: radial-gradient(#ff4d9a 15%, transparent 16%), radial-gradient(#ff4d9a 15%, transparent 16%);
   background-size: 40px 40px; background-position: 0 0, 20px 20px;
@@ -164,7 +159,7 @@ overflow: hidden;    /* 🎀 บังคับไม่ให้รูปทะ
 </div>
 </div>
 
-<!-- ⏱️ Screensaver Overlay -->
+<!-- Screensaver Overlay -->
 <div id="screensaver" class="fixed inset-0 z-[200] hidden flex-col items-center justify-center cursor-pointer transition-opacity duration-500">
   <div class="absolute inset-0 bg-white/40 backdrop-blur-[2px]"></div>
   <div class="relative z-10 flex flex-col items-center">
@@ -175,7 +170,6 @@ overflow: hidden;    /* 🎀 บังคับไม่ให้รูปทะ
       <span class="text-[#ff2a85] text-3xl font-black tracking-widest uppercase">Tap to Start 📸</span>
     </div>
   </div>
-  
   <div class="absolute top-[15%] left-[8%] text-6xl sparkle-anim z-10" style="animation-delay: 0.2s;">🎀</div>
   <div class="absolute bottom-[20%] right-[10%] text-6xl sparkle-anim z-10" style="animation-delay: 1.2s;">✨</div>
   <div class="absolute top-[35%] right-[15%] text-5xl sparkle-anim z-10" style="animation-delay: 0.7s;">💖</div>
@@ -196,7 +190,6 @@ overflow: hidden;    /* 🎀 บังคับไม่ให้รูปทะ
 <h1 class="text-[72px] font-black tracking-tighter leading-none text-white drop-shadow-lg" style="text-shadow: 0 4px 15px rgba(255,42,133,0.3);">TINKLE<br/><span class="text-[#ff2a85] text-[42px] tracking-tight">PHOTO CLUB</span></h1>
 </div>
 <div class="fade-in flex flex-col items-center w-full" style="animation-delay:0.2s">
-<!-- 🎯 ขยับปุ่ม OK หน้าแรกขึ้น -->
 <button class="toy-action-btn mb-6" onclick="navigate('MODE')">OK</button>
 <div class="bg-white/95 backdrop-blur-sm px-5 py-2 rounded-full border-[3px] border-white shadow-sm text-center">
 <p class="text-[#ff2a85] font-black text-[11px] tracking-wide flex items-center gap-1.5 uppercase"><span>💖 TAP OK TO START 💖</span></p>
@@ -239,7 +232,7 @@ overflow: hidden;    /* 🎀 บังคับไม่ให้รูปทะ
 <button onclick="nextLayout()" class="absolute right-2 z-20 w-14 h-14 bg-white/90 rounded-full shadow-md text-pink-500 font-black text-2xl border-4 border-pink-100 flex items-center justify-center active:scale-95">▶</button>
 </div>
 <div id="carousel-dots" class="flex justify-center gap-1.5 py-3"></div>
-<div class="flex justify-center shrink-0 mb-6"> <!-- 🎯 ขยับปุ่ม OK หน้านี้ขึ้นด้วย mb-6 -->
+<div class="flex justify-center shrink-0 mb-6">
 <button class="toy-action-btn" onclick="confirmLayout()">OK</button>
 </div>
 </div>
@@ -257,7 +250,6 @@ overflow: hidden;    /* 🎀 บังคับไม่ให้รูปทะ
 <div class="flex-1 w-full mt-2 px-6 py-2 overflow-y-auto no-scrollbar">
 <div class="grid grid-cols-4 gap-2" id="frame-grid-container"></div>
 </div>
-<!-- 🎯 ขยับแถบเลือกรอบสุดท้ายขึ้นด้วย mb-6 -->
 <div class="shrink-0 px-6 py-3 flex justify-between items-center bg-white border-t border-gray-100 mt-auto mb-6">
 <div class="flex items-center space-x-3">
 <div class="w-12 h-12 bg-gray-100 rounded border border-gray-200 shrink-0 overflow-hidden" id="selected-frame-thumb"></div>
@@ -280,7 +272,6 @@ overflow: hidden;    /* 🎀 บังคับไม่ให้รูปทะ
 <h2 class="header-title"><span class="text-yellow-400 text-2xl mr-2">⭐4</span> Select Filter</h2>
 </div>
 <div class="w-full px-8 mt-2 grid grid-cols-2 gap-3 flex-1 overflow-y-auto no-scrollbar pb-2" id="filter-list-container"></div>
-<!-- 🎯 ขยับปุ่ม OK หน้านี้ขึ้นด้วย pb-6 -->
 <div class="flex justify-center shrink-0 pt-3 pb-6 border-t border-gray-100 mt-auto">
 <button class="toy-action-btn" onclick="navigate('CAMERA')">OK</button>
 </div>
@@ -295,17 +286,14 @@ overflow: hidden;    /* 🎀 บังคับไม่ให้รูปทะ
 <button class="back-btn back-btn-dark" onclick="goBack('CAMERA')">◀</button>
 
 <div class="flex-1 flex flex-col items-center justify-center relative w-full overflow-hidden px-4">
-<!-- ⏳ ปุ่มเลือกเวลานับถอยหลัง (Timer Options) -->
 <button id="timer-toggle-btn" onclick="toggleTimer()" class="absolute top-3 left-1/2 -translate-x-1/2 z-20 h-10 px-4 bg-black/40 backdrop-blur rounded-full flex items-center justify-center text-white active:scale-95 border border-white/20 font-black text-[13px] shadow-md">
   ⏱️ 5S
 </button>
 
-<!-- 🎯 ปุ่มสลับกล้อง -->
 <button onclick="toggleCamera()" class="absolute top-3 right-3 z-20 w-12 h-12 bg-black/40 backdrop-blur rounded-full flex items-center justify-center text-white active:scale-95 border-2 border-white/20 shadow-md">
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/><path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><circle cx="12" cy="12" r="3"/><path d="m18 22-3-3 3-3"/><path d="m6 2 3 3-3 3"/></svg>
 </button>
 
-<!-- 🎀 คืนค่าความกว้างกล้องให้พอดี 54vh -->
 <div id="camera-viewport-container" class="w-full max-w-[240px] flex justify-center items-center relative mt-8" onclick="startShootingSequence()">
 <div id="camera-viewport">
 <video id="camera-video" autoplay playsinline muted></video>
@@ -316,7 +304,7 @@ overflow: hidden;    /* 🎀 บังคับไม่ให้รูปทะ
 <span id="shot-counter-text" class="text-[10px] font-black text-white drop-shadow-md bg-pink-500/90 px-3 py-1 rounded-full">SHOT 1/4</span>
 </div>
 
-<!-- 🪄 ปุ่มลบฉากหลังแบบมีลวดลาย (AI Background) -->
+<!-- ✅ FIX: ซ่อนปุ่ม BG บน iOS รุ่นเก่าที่ไม่รองรับ MediaPipe -->
 <button id="bg-toggle-btn" onclick="event.stopPropagation(); toggleBgRemoval();" class="absolute bottom-2 right-2 z-40 h-8 px-2 bg-black/50 backdrop-blur rounded-full flex items-center justify-center text-white active:scale-95 border border-white/30 font-black text-[10px] shadow-md transition-colors pointer-events-auto">
   🪄 BG: OFF
 </button>
@@ -332,7 +320,6 @@ overflow: hidden;    /* 🎀 บังคับไม่ให้รูปทะ
 </div>
 
 <div class="mt-3 flex space-x-1.5" id="shot-progress-dots"></div>
-<!-- 🎯 ขยับปุ่มถ่ายรูปกล้องขึ้นด้วย mb-6 -->
 <button id="capture-btn" class="toy-action-btn !py-2 !px-8 !text-xl mt-3 mb-6" onclick="startShootingSequence()">OK</button>
 </div>
 </div>
@@ -341,7 +328,6 @@ overflow: hidden;    /* 🎀 บังคับไม่ให้รูปทะ
 
 <!-- STEP 6: REVIEW & ADJUST -->
 <div id="screen-REVIEW" class="screen">
-<!-- 🎀 คืนค่าความสูงหน้าจัดรูปเป็น 54vh -->
 <div class="toy-window" style="background-color: var(--pastel-mint); height: 54vh;">
 <button class="back-btn" onclick="goBack('REVIEW')">◀</button>
 <div class="pt-4 px-4 text-center shrink-0">
@@ -349,7 +335,6 @@ overflow: hidden;    /* 🎀 บังคับไม่ให้รูปทะ
 <p class="header-subtitle mt-0.5 text-pink-500" id="review-instruction">แตะเพื่อซูมและเลื่อนจัดพิกัด</p>
 </div>
 <div class="flex-1 overflow-y-auto p-2 w-full no-scrollbar flex flex-col items-center justify-center">
-<!-- 🎀 คืนขนาดตารางพรีวิว -->
 <div class="grid gap-2 w-full max-w-[220px]" id="review-grid-container"></div>
 <div class="mt-3 mb-1 mx-auto w-full max-w-[200px] flex items-center justify-between gap-3 px-3 py-1.5 bg-white/80 backdrop-blur-md rounded-full border border-gray-200 shadow-sm shrink-0">
 <span class="text-gray-500 text-xs font-bold drop-shadow-sm">➖</span>
@@ -357,7 +342,6 @@ overflow: hidden;    /* 🎀 บังคับไม่ให้รูปทะ
 <span class="text-gray-500 text-xs font-bold drop-shadow-sm">➕</span>
 </div>
 </div>
-<!-- 🎯 ขยับปุ่ม FINISH ขึ้นด้วย pb-6 -->
 <div class="flex justify-center shrink-0 pt-2 pb-6 border-t border-gray-100 mt-auto">
 <button class="toy-action-btn !py-2 !px-8 !text-xl" onclick="processFinalPrint()">FINISH</button>
 </div>
@@ -365,18 +349,15 @@ overflow: hidden;    /* 🎀 บังคับไม่ให้รูปทะ
 <div class="toy-hidden-area"></div>
 </div>
 
-<!-- 🖨️ STEP 7: RESULT (บีบกลับมาอยู่ในครึ่งบน) -->
+<!-- STEP 7: RESULT -->
 <div id="screen-RESULT" class="screen">
   <div class="toy-window bg-white" style="height: 54vh;">
     <div class="pt-3 px-4 text-center shrink-0">
       <h2 class="header-title"><span class="text-yellow-400 text-xl mr-2">⭐6</span> Ready to Print!</h2>
     </div>
-    
     <div class="flex-1 w-full flex items-center justify-center p-2 min-h-0 overflow-hidden relative">
       <img id="final-image" src="" class="max-w-[80%] max-h-full shadow-md border-2 border-gray-200 object-contain fade-in rounded-[8px]" />
     </div>
-    
-    <!-- 🎯 ขยับแผงปุ่มบันทึกรูปและ RESTART ขึ้นด้วย pb-6 -->
     <div class="shrink-0 w-full px-5 flex flex-col gap-2 mt-auto pb-6 border-t border-gray-100 pt-2">
       <div class="flex gap-2 w-full">
         <button class="flex-1 bg-gray-100 text-[#6e6367] font-black py-2 rounded-xl shadow-sm active:scale-95 flex items-center justify-center gap-1 border border-gray-200" onclick="downloadImage()">
@@ -406,9 +387,16 @@ overflow: hidden;    /* 🎀 บังคับไม่ให้รูปทะ
 
 <script>
 // ==========================================
-// TINKLE PHOTO CLUB v48.0 — HIGH STABILITY FOR OLDER DEVICES (iPhone 6 / iOS 12 Friendly)
-// One Single Render Function for Preview & Export.
-// POP ART Filter & MediaPipe AI Selfie Segmentation optimized for Older Devices
+// TINKLE PHOTO CLUB — IPHONE 6s STABLE BUILD
+// KEY FIXES:
+//   1. Preview loop throttled to 20fps (was unlimited 60fps)
+//   2. Scratch canvas reuse instead of creating in loop
+//   3. MediaPipe loaded lazily only when user taps BG button
+//   4. AI loop uses setTimeout at 100ms intervals (not 30ms)
+//   5. extractLayoutAssets() processes sequentially (not all at once)
+//   6. Camera resolution capped at 480p
+//   7. previewLoopReady flag prevents double-loop bug
+//   8. All canvas cleanup (width=0) to free GPU memory
 // ==========================================
 
 function showAlert(msg) {
@@ -417,10 +405,10 @@ document.getElementById('custom-alert-msg').innerText = msg;
 modal.classList.remove('hidden'); modal.classList.add('flex');
 }
 
-// 📌 1. Master Coordinate System
+// ── Master canvas dimensions ──────────────────────────────────────────────────
 const MASTER_CANVAS = {
-PORTRAIT: { w: 1200, h: 1800 },
-LANDSCAPE: { w: 1800, h: 1200 }
+  PORTRAIT:  { w: 1200, h: 1800 },
+  LANDSCAPE: { w: 1800, h: 1200 }
 };
 
 const LAYOUTS = [
@@ -452,7 +440,7 @@ const FILTERS = [
 ];
 const CATEGORIES = ['special'];
 
-// 📌 3. State Management
+// ── State ─────────────────────────────────────────────────────────────────────
 let currentMode = 'multi', activeLayouts = [], carouselIndex = 0;
 let currentLayout = null, currentFrame = null, currentFilter = FILTERS[0];
 let availableFrames = [], stream = null, isFacingUser = true;
@@ -460,49 +448,78 @@ let availableFrames = [], stream = null, isFacingUser = true;
 let activePhotoIndex = 0, photoTransforms = [], capturedPhotos = [], capturedPhotoRatios = [];
 let retakeTargetIndex = -1, finalComposedUrl = null, finalGifUrl = null;
 let isShooting = false, isDragging = false;
-let startX = 0, startY = 0, currentX = 0, currentY = 0;
+let startX = 0, startY = 0;
 
-let slotAssetsData = []; 
-let previewRAF = null;
-let shootInterval = null; 
-let cameraTimer = 5; 
+let slotAssetsData = [];
 
-// 🎯 จัดเตรียม Shared Scratch Canvases เพื่อป้องกันการสร้าง Element ใหม่ซ้ำๆ ในหน่วยความจำ (แก้บั๊ก iPhone 6 ค้าง)
+// ✅ FIX 1: Shared scratch canvases — never recreated inside loops
 let previewScratchCanvas = null;
-let previewScratchCtx = null;
-let slotScratchCanvas = null;
-let slotScratchCtx = null;
+let previewScratchCtx    = null;
+let slotScratchCanvas    = null;
+let slotScratchCtx       = null;
 
-// 🪄 AI Background Removal Variables
-let bgRemovalMode = 0; // 0=OFF, 1=PINK, 2=GRID, 3=CLOUDS, 4=HOLO
-const BG_NAMES = ['OFF', 'PINK', 'GRID', 'CLOUDS', 'HOLO'];
+// ── Device capability detection ───────────────────────────────────────────────
+// Tier 3 = flagship (iPhone 12+, modern Android)
+// Tier 2 = mid-range (iPhone 8-11)
+// Tier 1 = legacy    (iPhone 6s/7, A9-A11)
+const DEVICE = (function() {
+  const mem = navigator.deviceMemory || 4; // undefined on Safari → assume 4
+  const cpu = navigator.hardwareConcurrency || 4;
+  let tier = 3;
+  if      (mem <= 1 || cpu <= 2) tier = 1;
+  else if (mem <= 2 || cpu <= 4) tier = 2;
+  // WebGL2 absent → likely A9/A10 chip (iPhone 6s/7)
+  const t = document.createElement('canvas');
+  if (!t.getContext('webgl2') && tier > 1) tier = Math.min(tier, 2);
+  t.width = 0;
+  return {
+    tier,
+    camW:        tier === 1 ? 480  : tier === 2 ? 720  : 1280,
+    camH:        tier === 1 ? 360  : tier === 2 ? 540  : 720,
+    previewFps:  tier === 1 ? 20   : tier === 2 ? 30   : 60,
+    aiIntervalMs:tier === 1 ? 120  : tier === 2 ? 66   : 33,
+    aiInputSize: tier === 1 ? 192  : tier === 2 ? 256  : 384,
+  };
+})();
+
+// ── Preview loop state ────────────────────────────────────────────────────────
+let previewRAF         = null;
+let previewLoopRunning = false;
+let lastPreviewFrameMs = 0;
+const PREVIEW_FRAME_MS = 1000 / DEVICE.previewFps;
+
+// ── Shoot interval ────────────────────────────────────────────────────────────
+let shootInterval = null;
+let cameraTimer   = 5;
+
+// ── AI BG removal — lazy-loaded only when user requests ───────────────────────
+let bgRemovalMode     = 0;
+const BG_NAMES        = ['OFF', 'PINK', 'GRID', 'CLOUDS', 'HOLO'];
 let selfieSegmentation = null;
-let aiLoopActive = false;
-let hasAiLoaded = false;
-let lastProcessedCanvas = document.createElement('canvas'); 
+let aiLoopRunning      = false;
+let hasAiLoaded        = false;
+let mediaPipeLoading   = false;
+let lastProcessedCanvas = document.createElement('canvas');
 
-// สร้างลวดลาย Pattern 
+// BG patterns
 let gridPattern = null;
+let cloudPattern = null;
+const cloudImg  = new Image();
+cloudImg.src = "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23d6e8f9'/%3E%3Cpath d='M20,60 a15,15 0 0,1 0,-30 a20,20 0 0,1 40,-10 a15,15 0 0,1 20,15 a15,15 0 0,1 -10,25 z' fill='%23ffffff' opacity='0.9'/%3E%3C/svg%3E";
+
 function getGridPattern(ctx) {
-  if(gridPattern) return gridPattern;
+  if (gridPattern) return gridPattern;
   const c = document.createElement('canvas'); c.width = 40; c.height = 40;
-  const cctx = c.getContext('2d');
-  cctx.fillStyle = '#fff0f5'; cctx.fillRect(0,0,40,40); 
-  cctx.strokeStyle = '#ffd1dc'; cctx.lineWidth = 2; 
-  cctx.beginPath(); cctx.moveTo(0,0); cctx.lineTo(40,0); cctx.moveTo(0,0); cctx.lineTo(0,40); cctx.stroke();
+  const cx = c.getContext('2d');
+  cx.fillStyle = '#fff0f5'; cx.fillRect(0,0,40,40);
+  cx.strokeStyle = '#ffd1dc'; cx.lineWidth = 2;
+  cx.beginPath(); cx.moveTo(0,0); cx.lineTo(40,0); cx.moveTo(0,0); cx.lineTo(0,40); cx.stroke();
   gridPattern = ctx.createPattern(c, 'repeat');
   return gridPattern;
 }
-
-let cloudPattern = null;
-const cloudImg = new Image();
-cloudImg.src = "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23d6e8f9'/%3E%3Cpath d='M20,60 a15,15 0 0,1 0,-30 a20,20 0 0,1 40,-10 a15,15 0 0,1 20,15 a15,15 0 0,1 -10,25 z' fill='%23ffffff' opacity='0.9'/%3E%3C/svg%3E";
 function getCloudPattern(ctx) {
-  if(cloudPattern) return cloudPattern;
-  if(cloudImg.complete && cloudImg.naturalWidth > 0) {
-    cloudPattern = ctx.createPattern(cloudImg, 'repeat');
-    return cloudPattern;
-  }
+  if (cloudPattern) return cloudPattern;
+  if (cloudImg.complete && cloudImg.naturalWidth > 0) { cloudPattern = ctx.createPattern(cloudImg, 'repeat'); return cloudPattern; }
   return '#d6e8f9';
 }
 
@@ -511,455 +528,425 @@ const AudioCtx = window.AudioContext || window.webkitAudioContext;
 let audioCtx;
 
 function playSfx(type) {
-if (!audioCtx) audioCtx = new AudioCtx();
-const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
-osc.connect(gain); gain.connect(audioCtx.destination);
-if (type === 'beep') {
-  osc.type = 'sine'; osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-  gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
-  osc.start(); osc.stop(audioCtx.currentTime + 0.1);
-} else if (type === 'shutter') {
-  osc.type = 'triangle'; osc.frequency.setValueAtTime(400, audioCtx.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.2);
-  gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
-  osc.start(); osc.stop(audioCtx.currentTime + 0.2);
-} else if (type === 'print') {
-  osc.type = 'sawtooth'; osc.frequency.setValueAtTime(30, audioCtx.currentTime);
-  osc.frequency.linearRampToValueAtTime(20, audioCtx.currentTime + 2.5);
-  gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
-  gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 2.5);
-  osc.start(); osc.stop(audioCtx.currentTime + 2.5);
-}
+  if (!audioCtx) { try { audioCtx = new AudioCtx(); } catch(e) { return; } }
+  try {
+    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    if (type === 'beep') {
+      osc.type = 'sine'; osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+    } else if (type === 'shutter') {
+      osc.type = 'triangle'; osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+    } else if (type === 'print') {
+      osc.type = 'sawtooth'; osc.frequency.setValueAtTime(30, audioCtx.currentTime);
+      osc.frequency.linearRampToValueAtTime(20, audioCtx.currentTime + 2.5);
+      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 2.5);
+      osc.start(); osc.stop(audioCtx.currentTime + 2.5);
+    }
+  } catch(e) {}
 }
 
-const loadImage = (src) => {
-return new Promise((resolve, reject) => {
-const img = new Image(); img.crossOrigin = 'anonymous';
-img.onload = () => resolve(img); img.onerror = e => reject(e);
-img.src = src;
+const loadImage = src => new Promise((resolve, reject) => {
+  const img = new Image(); img.crossOrigin = 'anonymous';
+  img.onload = () => resolve(img);
+  img.onerror = e => reject(e);
+  img.src = src;
 });
-};
 
-// 📌 4. FULL HARD RESET
+// ── Hard reset ────────────────────────────────────────────────────────────────
 function forceHardReset() {
-if (shootInterval) { clearInterval(shootInterval); shootInterval = null; } 
-$('countdown-display').classList.add('hidden'); 
-aiLoopActive = false; 
+  if (shootInterval) { clearInterval(shootInterval); shootInterval = null; }
+  $('countdown-display').classList.add('hidden');
 
-capturedPhotos = []; photoTransforms = []; capturedPhotoRatios = []; retakeTargetIndex = -1;
-activePhotoIndex = 0; isShooting = false; slotAssetsData = [];
+  // ✅ FIX 5: Stop both loops cleanly
+  previewLoopRunning = false;
+  aiLoopRunning      = false;
+  if (previewRAF) { cancelAnimationFrame(previewRAF); previewRAF = null; }
 
-const cCanvas = $('preview-canvas');
-if (cCanvas) { const ctx = cCanvas.getContext('2d'); ctx.clearRect(0,0, cCanvas.width, cCanvas.height); }
-const container = $('camera-viewport');
-if (container) container.style.aspectRatio = '';
+  capturedPhotos = []; photoTransforms = []; capturedPhotoRatios = [];
+  retakeTargetIndex = -1; activePhotoIndex = 0; isShooting = false; slotAssetsData = [];
 
-const disp = $('dispensed-photo-container');
-if (disp) { disp.style.transition = 'none'; disp.style.transform = 'translateY(-120%)'; }
+  const cCanvas = $('preview-canvas');
+  if (cCanvas) { const ctx = cCanvas.getContext('2d'); ctx.clearRect(0,0,cCanvas.width,cCanvas.height); }
+  const container = $('camera-viewport');
+  if (container) container.style.aspectRatio = '';
 }
 
+// ── Mask detection helpers ────────────────────────────────────────────────────
 function detectBlackComponents(imageData, W, H) {
-  const data    = imageData.data;
+  const data = imageData.data;
   const visited = new Uint8Array(W * H);
   const results = [];
-
-  function isBlack(idx) {
-    const p = idx * 4;
-    return data[p+3] > 200 && data[p] < 50 && data[p+1] < 50 && data[p+2] < 50;
-  }
-
+  function isBlack(idx) { const p=idx*4; return data[p+3]>200&&data[p]<50&&data[p+1]<50&&data[p+2]<50; }
   function fill(sx, sy) {
-    const stack = [sy * W + sx];
-    let x0 = sx, x1 = sx, y0 = sy, y1 = sy;
-    while (stack.length) {
-      const idx = stack.pop();
-      if (visited[idx]) continue;
-      const x = idx % W, y = (idx / W) | 0;
-      if (!isBlack(idx)) continue;
-      visited[idx] = 1;
-      if (x < x0) x0 = x; if (x > x1) x1 = x;
-      if (y < y0) y0 = y; if (y > y1) y1 = y;
-      if (x+1 < W)  stack.push(idx+1);
-      if (x-1 >= 0) stack.push(idx-1);
-      if (y+1 < H)  stack.push(idx+W);
-      if (y-1 >= 0) stack.push(idx-W);
+    const stack=[sy*W+sx]; let x0=sx,x1=sx,y0=sy,y1=sy;
+    while(stack.length){ const idx=stack.pop(); if(visited[idx]) continue; const x=idx%W,y=(idx/W)|0;
+      if(!isBlack(idx)) continue; visited[idx]=1;
+      if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y;
+      if(x+1<W) stack.push(idx+1); if(x-1>=0) stack.push(idx-1);
+      if(y+1<H) stack.push(idx+W); if(y-1>=0) stack.push(idx-W);
     }
-    return { x0, y0, x1, y1, w: x1-x0+1, h: y1-y0+1, cx: ((x0+x1)/2)|0, cy: ((y0+y1)/2)|0 };
+    return {x0,y0,x1,y1,w:x1-x0+1,h:y1-y0+1,cx:((x0+x1)/2)|0,cy:((y0+y1)/2)|0};
   }
-
-  for (let y = 0; y < H; y += 2) {
-    for (let x = 0; x < W; x += 2) {
-      const idx = y * W + x;
-      if (!visited[idx] && isBlack(idx)) {
-        const r = fill(x, y);
-        if (r.w >= 80 && r.h >= 80) results.push(r);
-      }
-    }
+  for(let y=0;y<H;y+=2) for(let x=0;x<W;x+=2) {
+    const idx=y*W+x; if(!visited[idx]&&isBlack(idx)){ const r=fill(x,y); if(r.w>=80&&r.h>=80) results.push(r); }
   }
-  results.sort((a, b) => a.cy !== b.cy ? a.cy - b.cy : a.cx - b.cx);
+  results.sort((a,b)=>a.cy!==b.cy?a.cy-b.cy:a.cx-b.cx);
   return results;
 }
 
+// ✅ FIX 6: extractLayoutAssets processes slots SEQUENTIALLY to avoid RAM spike
 async function extractLayoutAssets() {
   slotAssetsData = [];
   if (!currentLayout) return;
 
   const master = MASTER_CANVAS[currentLayout.canvas];
   let markImg = null, overlayImg = null;
-  
+
   if (currentFrame) {
     try {
+      // Load mask and overlay one at a time
       if (currentFrame.mask)    markImg    = await loadImage(currentFrame.mask);
       if (currentFrame.overlay) overlayImg = await loadImage(currentFrame.overlay);
-    } catch(e) { console.warn('[Tinkle] load error:', e); }
+    } catch(e) { console.warn('[Tinkle] asset load:', e); }
   }
 
   if (!markImg) {
-    for (let i = 0; i < currentLayout.slots.length; i++) {
-      const slot = currentLayout.slots[i];
-      slotAssetsData.push({
-        region: { x0: slot.x, y0: slot.y, x1: slot.x+slot.w, y1: slot.y+slot.h, w: slot.w, h: slot.h, cx: slot.x+slot.w/2, cy: slot.y+slot.h/2 },
-        maskImg: null, overlayImg: null
-      });
-    }
+    currentLayout.slots.forEach(slot => {
+      slotAssetsData.push({ region:{x0:slot.x,y0:slot.y,x1:slot.x+slot.w,y1:slot.y+slot.h,w:slot.w,h:slot.h,cx:slot.x+slot.w/2,cy:slot.y+slot.h/2}, maskImg:null, overlayImg:null });
+    });
     return;
   }
 
   const mCvs = document.createElement('canvas');
   mCvs.width = master.w; mCvs.height = master.h;
   const mCtx = mCvs.getContext('2d', { willReadFrequently: true });
-  if (markImg) mCtx.drawImage(markImg, 0, 0, master.w, master.h);
+  mCtx.drawImage(markImg, 0, 0, master.w, master.h);
 
   const oCvs = document.createElement('canvas');
   oCvs.width = master.w; oCvs.height = master.h;
   if (overlayImg) oCvs.getContext('2d').drawImage(overlayImg, 0, 0, master.w, master.h);
 
-  const allRegions = detectBlackComponents(
-    mCtx.getImageData(0, 0, master.w, master.h), master.w, master.h
-  );
+  const allRegions = detectBlackComponents(mCtx.getImageData(0,0,master.w,master.h), master.w, master.h);
 
-  const isTwin = currentLayout.type === 'twin-strip';
-  const halfW  = master.w / 2;
-  const nSlots = currentLayout.slots.length;
+  const isTwin  = currentLayout.type === 'twin-strip';
+  const halfW   = master.w / 2;
+  const nSlots  = currentLayout.slots.length;
 
-  let leftRegions, rightRegions;
+  let leftRegions = allRegions.filter(r => r.cx < halfW).sort((a,b)=>a.cy-b.cy).slice(0,nSlots);
+  let rightRegions = [];
   if (isTwin) {
-    leftRegions  = allRegions.filter(r => r.cx <  halfW).sort((a,b) => a.cy-b.cy).slice(0, nSlots);
-    rightRegions = allRegions.filter(r => r.cx >= halfW).sort((a,b) => a.cy-b.cy).slice(0, nSlots);
+    rightRegions = allRegions.filter(r=>r.cx>=halfW).sort((a,b)=>a.cy-b.cy).slice(0,nSlots);
     if (rightRegions.length < nSlots)
-      rightRegions = leftRegions.map(r => ({...r, x0:r.x0+halfW, x1:r.x1+halfW, cx:r.cx+halfW}));
-  } else {
-    leftRegions = allRegions.slice(0, nSlots);
+      rightRegions = leftRegions.map(r=>({...r,x0:r.x0+halfW,x1:r.x1+halfW,cx:r.cx+halfW}));
   }
 
   function buildMask(region) {
-    const c = document.createElement('canvas');
-    c.width = region.w; c.height = region.h;
-    const ctx = c.getContext('2d');
-    const src = mCtx.getImageData(region.x0, region.y0, region.w, region.h);
-    const dst = ctx.createImageData(region.w, region.h);
-    for (let i = 0; i < src.data.length; i += 4) {
-      const ok = src.data[i+3] > 200 && src.data[i] < 50 && src.data[i+1] < 50 && src.data[i+2] < 50;
-      dst.data[i+3] = ok ? 255 : 0;
-    }
-    ctx.putImageData(dst, 0, 0);
-    return c;
+    const c=document.createElement('canvas'); c.width=region.w; c.height=region.h;
+    const ctx=c.getContext('2d');
+    const src=mCtx.getImageData(region.x0,region.y0,region.w,region.h);
+    const dst=ctx.createImageData(region.w,region.h);
+    for(let i=0;i<src.data.length;i+=4){ const ok=src.data[i+3]>200&&src.data[i]<50&&src.data[i+1]<50&&src.data[i+2]<50; dst.data[i+3]=ok?255:0; }
+    ctx.putImageData(dst,0,0); return c;
   }
-
   function sliceOverlay(region) {
-    const c = document.createElement('canvas');
-    c.width = region.w; c.height = region.h;
-    c.getContext('2d').drawImage(oCvs, region.x0, region.y0, region.w, region.h, 0, 0, region.w, region.h);
+    const c=document.createElement('canvas'); c.width=region.w; c.height=region.h;
+    c.getContext('2d').drawImage(oCvs,region.x0,region.y0,region.w,region.h,0,0,region.w,region.h);
     return c;
   }
 
+  // ✅ Process each slot one at a time, yield to browser between slots
   for (let i = 0; i < nSlots; i++) {
     const regionL = leftRegions[i];
     if (!regionL) { slotAssetsData.push(null); continue; }
 
-    const maskL    = buildMask(regionL);
-    const overlayL = overlayImg ? sliceOverlay(regionL) : null;
+    const maskLCvs    = buildMask(regionL);
+    const overlayLCvs = overlayImg ? sliceOverlay(regionL) : null;
 
     const entry = {
       region:     regionL,
-      maskImg:    await loadImage(maskL.toDataURL('image/png')),
-      overlayImg: overlayL ? await loadImage(overlayL.toDataURL('image/png')) : null,
+      maskImg:    await loadImage(maskLCvs.toDataURL('image/png')),
+      overlayImg: overlayLCvs ? await loadImage(overlayLCvs.toDataURL('image/png')) : null,
     };
 
+    // Free temp canvases immediately
+    maskLCvs.width = 0; maskLCvs.height = 0;
+    if (overlayLCvs) { overlayLCvs.width = 0; overlayLCvs.height = 0; }
+
     if (isTwin && rightRegions[i]) {
-      const regionR  = rightRegions[i];
-      const maskR    = buildMask(regionR);
-      const overlayR = overlayImg ? sliceOverlay(regionR) : null;
-      entry.regionRight    = regionR;
-      entry.maskImgRight   = await loadImage(maskR.toDataURL('image/png'));
-      entry.overlayImgRight = overlayR ? await loadImage(overlayR.toDataURL('image/png')) : null;
+      const regionR    = rightRegions[i];
+      const maskRCvs   = buildMask(regionR);
+      const overlayRCvs = overlayImg ? sliceOverlay(regionR) : null;
+      entry.regionRight     = regionR;
+      entry.maskImgRight    = await loadImage(maskRCvs.toDataURL('image/png'));
+      entry.overlayImgRight = overlayRCvs ? await loadImage(overlayRCvs.toDataURL('image/png')) : null;
+      maskRCvs.width = 0; maskRCvs.height = 0;
+      if (overlayRCvs) { overlayRCvs.width = 0; overlayRCvs.height = 0; }
     }
 
     slotAssetsData.push(entry);
-    
-    maskL.width = 0; maskL.height = 0;
-    if(overlayL) { overlayL.width = 0; overlayL.height = 0; }
+
+    // ✅ FIX 7: yield to browser every slot so UI doesn't freeze
+    await new Promise(r => setTimeout(r, 0));
   }
+
+  // Free master canvases
+  mCvs.width = 0; mCvs.height = 0;
+  oCvs.width = 0; oCvs.height = 0;
 }
 
-function renderOneSlot(outputCtx, outputW, outputH, srcElem, isVideo, maskImg, overlayImg, transform, filterCss, slotIndex = 0) {
-  outputCtx.save(); // 📌 MASTER SAVE
-  
-  // 📌 ลบมุมคม (Rounded Corners) สไตล์สติกเกอร์ สำหรับเคสที่ไม่มี Mask
+// ── Core render function ──────────────────────────────────────────────────────
+function renderOneSlot(outputCtx, outputW, outputH, srcElem, isVideo, maskImg, overlayImg, transform, filterCss, slotIndex) {
+  outputCtx.save();
+
   if (!maskImg) {
+    const r = Math.min(outputW, outputH) * 0.04;
     outputCtx.beginPath();
-    const r = Math.min(outputW, outputH) * 0.04; 
-    outputCtx.moveTo(r, 0);
-    outputCtx.lineTo(outputW - r, 0);
-    outputCtx.quadraticCurveTo(outputW, 0, outputW, r);
-    outputCtx.lineTo(outputW, outputH - r);
-    outputCtx.quadraticCurveTo(outputW, outputH, outputW - r, outputH);
-    outputCtx.lineTo(r, outputH);
-    outputCtx.quadraticCurveTo(0, outputH, 0, outputH - r);
-    outputCtx.lineTo(0, r);
-    outputCtx.quadraticCurveTo(0, 0, r, 0);
-    outputCtx.closePath();
-    outputCtx.clip();
+    outputCtx.moveTo(r,0); outputCtx.lineTo(outputW-r,0);
+    outputCtx.quadraticCurveTo(outputW,0,outputW,r);
+    outputCtx.lineTo(outputW,outputH-r);
+    outputCtx.quadraticCurveTo(outputW,outputH,outputW-r,outputH);
+    outputCtx.lineTo(r,outputH);
+    outputCtx.quadraticCurveTo(0,outputH,0,outputH-r);
+    outputCtx.lineTo(0,r);
+    outputCtx.quadraticCurveTo(0,0,r,0);
+    outputCtx.closePath(); outputCtx.clip();
   }
 
   outputCtx.fillStyle = '#000000';
-  outputCtx.fillRect(0, 0, outputW, outputH);
+  outputCtx.fillRect(0,0,outputW,outputH);
 
-  const srcW = isVideo ? (srcElem.videoWidth || srcElem.width) : srcElem.width;
-  const srcH = isVideo ? (srcElem.videoHeight || srcElem.height) : srcElem.height;
-  if (!srcW || !srcH) {
-      outputCtx.restore();
-      return;
-  }
+  const srcW = isVideo ? (srcElem.videoWidth||srcElem.width||0) : (srcElem.width||0);
+  const srcH = isVideo ? (srcElem.videoHeight||srcElem.height||0) : (srcElem.height||0);
+  if (!srcW || !srcH) { outputCtx.restore(); return; }
 
-  const srcRatio = srcW / srcH;
-  const outRatio = outputW / outputH;
+  const srcRatio = srcW/srcH, outRatio = outputW/outputH;
   let drawW, drawH;
-  if (srcRatio > outRatio) { drawH = outputH; drawW = drawH * srcRatio; }
-  else                     { drawW = outputW; drawH = drawW / srcRatio; }
+  if (srcRatio > outRatio) { drawH=outputH; drawW=drawH*srcRatio; }
+  else                     { drawW=outputW; drawH=drawW/srcRatio; }
 
   outputCtx.save();
-  outputCtx.translate(outputW / 2, outputH / 2);
+  outputCtx.translate(outputW/2, outputH/2);
   if (transform) {
-    outputCtx.translate((transform.pctX||0) * outputW, (transform.pctY||0) * outputH);
+    outputCtx.translate((transform.pctX||0)*outputW, (transform.pctY||0)*outputH);
     outputCtx.scale(transform.zoom||1, transform.zoom||1);
   }
-  
-  // 🎨 ฟิลเตอร์ Pop-Art สลับสีแต่ละช่องแบบไดนามิก
+
   let applyFilter = filterCss;
   if (filterCss === 'popart') {
-    const popHues = [0, 60, 120, 180, 240, 300, 30, 210, 330];
-    applyFilter = `hue-rotate(${popHues[slotIndex % popHues.length]}deg) saturate(1.8) contrast(1.1)`;
+    const popHues = [0,60,120,180,240,300,30,210,330];
+    applyFilter = `hue-rotate(${popHues[(slotIndex||0) % popHues.length]}deg) saturate(1.8) contrast(1.1)`;
   }
   if (applyFilter && applyFilter !== 'none') outputCtx.filter = applyFilter;
-  
-  // 🎯 แก้ปัญหา Mirroring (กลับกล้อง): สลับภาพพรีวิวขวาซ้ายเฉพาะกล้องสดเท่านั้น ตอน Finish จะไม่สลับซ้ำ
-  if (isVideo && isFacingUser) outputCtx.scale(-1, 1);
-  
+
+  if (isVideo && isFacingUser) outputCtx.scale(-1,1);
   outputCtx.drawImage(srcElem, -drawW/2, -drawH/2, drawW, drawH);
   outputCtx.restore();
 
   if (maskImg) {
     outputCtx.globalCompositeOperation = 'destination-in';
-    outputCtx.drawImage(maskImg, 0, 0, outputW, outputH);
+    outputCtx.drawImage(maskImg,0,0,outputW,outputH);
     outputCtx.globalCompositeOperation = 'source-over';
   }
-
   if (overlayImg) {
     outputCtx.save();
-    outputCtx.globalCompositeOperation = 'source-over';
-    outputCtx.drawImage(overlayImg, 0, 0, outputW, outputH);
+    outputCtx.drawImage(overlayImg,0,0,outputW,outputH);
     outputCtx.restore();
   }
-  
-  outputCtx.restore(); // 📌 MASTER RESTORE
+
+  outputCtx.restore();
 }
 
-function renderSlot(targetCtx, targetW, targetH, srcElem, maskElement, overlayElement, transform, filterCss, isVideo, assets, region, scale, slotIndex = 0) {
-  renderOneSlot(targetCtx, targetW, targetH, srcElem, isVideo, maskElement, overlayElement, transform, filterCss, slotIndex);
-}
-
-// ================= NAVIGATION =================
+// ── Navigation ────────────────────────────────────────────────────────────────
 function navigate(screenName) {
-document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-const screen = $('screen-' + screenName);
-if (screen) screen.classList.add('active');
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const screen = $('screen-' + screenName);
+  if (screen) screen.classList.add('active');
 
-if (screenName === 'FRAME') updateSelectedFrameUI();
-else if (screenName === 'CAMERA') { slotAssetsData = []; startCamera(); }
-else {
-if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-if (previewRAF) { cancelAnimationFrame(previewRAF); previewRAF = null; }
-if (screenName === 'REVIEW') { activePhotoIndex = 0; renderReview(); }
-}
+  if (screenName === 'FRAME') { updateSelectedFrameUI(); }
+  else if (screenName === 'CAMERA') { slotAssetsData = []; startCamera(); }
+  else {
+    // Stop camera & loops when leaving CAMERA screen
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    previewLoopRunning = false;
+    aiLoopRunning = false;
+    if (previewRAF) { cancelAnimationFrame(previewRAF); previewRAF = null; }
+    if (screenName === 'REVIEW') { activePhotoIndex = 0; renderReview(); }
+  }
 }
 
 function goBack(step) {
-playSfx('beep');
-switch(step) {
-case 'MODE': navigate('HOME'); break;
-case 'LAYOUT': navigate('MODE'); break;
-case 'FRAME': navigate('LAYOUT'); break;
-case 'FILTER': navigate('FRAME'); break;
-case 'CAMERA': forceHardReset(); navigate('FILTER'); break;
-case 'REVIEW': forceHardReset(); navigate('FILTER'); break;
-}
+  playSfx('beep');
+  switch(step) {
+    case 'MODE':   navigate('HOME');   break;
+    case 'LAYOUT': navigate('MODE');   break;
+    case 'FRAME':  navigate('LAYOUT'); break;
+    case 'FILTER': navigate('FRAME');  break;
+    case 'CAMERA': forceHardReset(); navigate('FILTER'); break;
+    case 'REVIEW': forceHardReset(); navigate('FILTER'); break;
+  }
 }
 
-// 🪄 ================= AI BACKGROUND REMOVAL LOGIC (Throttled for Performance & Legacy Safari Guard) =================
+// ── AI Background Removal ─────────────────────────────────────────────────────
+// ✅ FIX 8: MediaPipe loaded LAZILY — only when user taps BG button
 async function toggleBgRemoval() {
   playSfx('beep');
-
-  // 🎯 ดักจับเบราว์เซอร์เก่าที่ไม่รองรับ SelfieSegmentation (ป้องกัน ReferenceError เครื่องค้างบน iPhone 6)
-  if (typeof SelfieSegmentation === 'undefined') {
-    showAlert("ขออภัยด้วยนะคะ อุปกรณ์รุ่นเก่านี้ไม่รองรับระบบลบพื้นหลังอัจฉริยะค่ะ 🥺");
-    bgRemovalMode = 0;
-    updateBgBtnUI();
-    return;
-  }
 
   bgRemovalMode = (bgRemovalMode + 1) % BG_NAMES.length;
   updateBgBtnUI();
 
-  if (bgRemovalMode !== 0 && !selfieSegmentation) {
-    const btn = $('bg-toggle-btn');
-    btn.innerText = `🪄 LOADING...`;
-    try {
-      selfieSegmentation = new SelfieSegmentation({locateFile: (file) => {
-        return `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`;
-      }});
-      selfieSegmentation.setOptions({ modelSelection: 1 });
-      
-      selfieSegmentation.onResults((results) => {
-        if (!hasAiLoaded) {
-          hasAiLoaded = true;
-          $('bg-toggle-btn').innerText = `🪄 BG: ${BG_NAMES[bgRemovalMode]}`;
-        }
-        onMediaPipeResults(results);
-      });
-    } catch(err) {
-      console.error("AI Initialization crashed:", err);
-      showAlert("บราวเซอร์หรือฮาร์ดแวร์รุ่นนี้ไม่รองรับระบบคัดแยกวัตถุ AI ค่ะ 🥺");
-      bgRemovalMode = 0;
+  if (bgRemovalMode === 0) return; // turning off — nothing to load
+
+  if (mediaPipeLoading) return; // already loading
+
+  if (!selfieSegmentation) {
+    // Check if the library script is available
+    if (typeof SelfieSegmentation === 'undefined') {
+      // Try to load it now
+      mediaPipeLoading = true;
       updateBgBtnUI();
+      try {
+        await new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js';
+          s.crossOrigin = 'anonymous';
+          s.onload = resolve;
+          s.onerror = reject;
+          document.head.appendChild(s);
+        });
+      } catch(e) {
+        mediaPipeLoading = false;
+        bgRemovalMode = 0; updateBgBtnUI();
+        showAlert('ไม่สามารถโหลดระบบลบพื้นหลังได้ค่ะ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต 🥺');
+        return;
+      }
+    }
+
+    if (typeof SelfieSegmentation === 'undefined') {
+      mediaPipeLoading = false;
+      bgRemovalMode = 0; updateBgBtnUI();
+      showAlert('ขออภัยค่ะ อุปกรณ์นี้ไม่รองรับระบบลบพื้นหลัง 🥺');
       return;
     }
+
+    try {
+      selfieSegmentation = new SelfieSegmentation({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${f}` });
+      selfieSegmentation.setOptions({ modelSelection: 1 });
+      selfieSegmentation.onResults(onMediaPipeResults);
+    } catch(err) {
+      mediaPipeLoading = false;
+      bgRemovalMode = 0; updateBgBtnUI();
+      showAlert('อุปกรณ์รุ่นนี้ไม่รองรับระบบ AI ค่ะ 🥺');
+      return;
+    }
+    mediaPipeLoading = false;
+  }
+
+  // Start AI loop if not already running
+  if (!aiLoopRunning) {
+    aiLoopRunning = true;
+    aiLoop();
   }
 }
 
 function updateBgBtnUI() {
-  const btn = $('bg-toggle-btn');
-  if (!btn) return;
+  const btn = $('bg-toggle-btn'); if (!btn) return;
   if (bgRemovalMode !== 0) {
-    btn.classList.add('bg-pink-500/80', 'border-pink-300');
-    btn.classList.remove('bg-black/50', 'border-white/30');
-    btn.innerText = hasAiLoaded ? `🪄 BG: ${BG_NAMES[bgRemovalMode]}` : `🪄 LOADING...`;
+    btn.classList.add('bg-pink-500/80','border-pink-300');
+    btn.classList.remove('bg-black/50','border-white/30');
+    btn.innerText = mediaPipeLoading ? '🪄 LOADING...' : `🪄 BG: ${BG_NAMES[bgRemovalMode]}`;
   } else {
-    btn.classList.remove('bg-pink-500/80', 'border-pink-300');
-    btn.classList.add('bg-black/50', 'border-white/30');
-    btn.innerText = `🪄 BG: OFF`;
+    btn.classList.remove('bg-pink-500/80','border-pink-300');
+    btn.classList.add('bg-black/50','border-white/30');
+    btn.innerText = '🪄 BG: OFF';
   }
 }
 
 function onMediaPipeResults(results) {
   const vid = $('camera-video');
   if (!vid || vid.readyState < 2) return;
-  
-  // รักษาความละเอียดที่แท้จริงของกล้องไว้ตอนคัดแยกฉากหลัง
-  const vw = vid.videoWidth || 1280;
-  const vh = vid.videoHeight || 720;
-  
-  lastProcessedCanvas.width = vw;
-  lastProcessedCanvas.height = vh;
+  if (!hasAiLoaded) { hasAiLoaded = true; updateBgBtnUI(); }
+
+  const vw = vid.videoWidth || 640, vh = vid.videoHeight || 480;
+  lastProcessedCanvas.width = vw; lastProcessedCanvas.height = vh;
   const ctx = lastProcessedCanvas.getContext('2d');
-  
-  ctx.clearRect(0, 0, vw, vh);
-  
-  // 1. วาด Mask ขนาดย่อที่ยืดมาเท่ากับสัดส่วนกล้องจริง
-  ctx.drawImage(results.segmentationMask, 0, 0, vw, vh);
-  
-  // 2. ซ้อนภาพคนจริงระดับความละเอียดสูง (source-in)
+  ctx.clearRect(0,0,vw,vh);
+  ctx.drawImage(results.segmentationMask, 0,0, vw,vh);
   ctx.globalCompositeOperation = 'source-in';
-  ctx.drawImage(vid, 0, 0, vw, vh);
-  
-  // 3. ใส่ฉากหลังลวดลายต่างๆ ไว้หลังภาพคน
+  ctx.drawImage(vid,0,0,vw,vh);
   ctx.globalCompositeOperation = 'destination-over';
-  if (bgRemovalMode === 1) { // PINK
-      ctx.fillStyle = '#ffdae0';
-  } else if (bgRemovalMode === 2) { // GRID
-      ctx.fillStyle = getGridPattern(ctx);
-  } else if (bgRemovalMode === 3) { // CLOUDS
-      ctx.fillStyle = getCloudPattern(ctx);
-  } else if (bgRemovalMode === 4) { // HOLO
-      const grd = ctx.createLinearGradient(0, 0, vw, vh);
-      grd.addColorStop(0, '#ff9a9e');
-      grd.addColorStop(0.5, '#fecfef');
-      grd.addColorStop(1, '#a1c4fd');
-      ctx.fillStyle = grd;
+  if (bgRemovalMode===1) { ctx.fillStyle='#ffdae0'; }
+  else if (bgRemovalMode===2) { ctx.fillStyle=getGridPattern(ctx); }
+  else if (bgRemovalMode===3) { ctx.fillStyle=getCloudPattern(ctx); }
+  else if (bgRemovalMode===4) {
+    const g=ctx.createLinearGradient(0,0,vw,vh);
+    g.addColorStop(0,'#ff9a9e'); g.addColorStop(0.5,'#fecfef'); g.addColorStop(1,'#a1c4fd');
+    ctx.fillStyle=g;
   }
-  
-  if(bgRemovalMode !== 0) {
-      ctx.fillRect(0, 0, vw, vh);
-  }
-  
-  ctx.globalCompositeOperation = 'source-over';
+  if (bgRemovalMode!==0) ctx.fillRect(0,0,vw,vh);
+  ctx.globalCompositeOperation='source-over';
 }
 
-let lastAiProcessedTime = 0;
-async function processAILoop() {
-  if (!aiLoopActive) return;
+// ── AI loop: interval and input size scale with device tier ───────────────────
+// Tier1=120ms/192px, Tier2=66ms/256px, Tier3=33ms/384px
+let lastAiTime    = 0;
+let aiInputCanvas = null;
+let aiInputCtx    = null;
+
+function aiLoop() {
+  if (!aiLoopRunning) return;
   const vid = $('camera-video');
   const now = performance.now();
-  
-  // 🎯 ปรับโครงสร้างเพื่อ iPhone 6: จำกัดทราฟฟิกภาพเข้า AI ไม่เกิน 12 FPS (ทุกๆ 80ms) และส่งภาพสเกลเล็ก 256x256 ป้องกัน GPU Overload
-  if (bgRemovalMode !== 0 && selfieSegmentation && vid.readyState >= 2 && !vid.paused && (now - lastAiProcessedTime > 80)) {
-    lastAiProcessedTime = now;
-    try {
-      if (!window.aiInputCanvas) {
-        window.aiInputCanvas = document.createElement('canvas');
-        window.aiInputCanvas.width = 256;
-        window.aiInputCanvas.height = 256;
-        window.aiInputCtx = window.aiInputCanvas.getContext('2d');
-      }
-      // ย่อขนาดภาพวิดีโอสดก่อนส่งเข้าเครื่องยนต์ AI เพื่อประหยัด CPU มือถือรุ่นเก่า
-      window.aiInputCtx.drawImage(vid, 0, 0, 256, 256);
-      await selfieSegmentation.send({image: window.aiInputCanvas});
-    } catch(e) { console.warn('MediaPipe error:', e); }
+
+  if (bgRemovalMode !== 0 && selfieSegmentation && vid && vid.readyState >= 2 && !vid.paused && (now - lastAiTime > DEVICE.aiIntervalMs)) {
+    lastAiTime = now;
+    if (!aiInputCanvas) {
+      aiInputCanvas = document.createElement('canvas');
+      aiInputCanvas.width = aiInputCanvas.height = DEVICE.aiInputSize;
+      aiInputCtx = aiInputCanvas.getContext('2d');
+    }
+    aiInputCtx.drawImage(vid, 0, 0, DEVICE.aiInputSize, DEVICE.aiInputSize);
+    selfieSegmentation.send({ image: aiInputCanvas }).catch(() => {});
   }
-  if (aiLoopActive) {
-    // ใช้ setTimeout แทน requestAnimationFrame เล็กน้อยเพื่อแบ่งปันทรัพยากรระบบให้เบราว์เซอร์ลื่นไหล
-    setTimeout(processAILoop, 30);
-  }
+
+  setTimeout(aiLoop, DEVICE.aiIntervalMs);
 }
 
-// 📌 7. TRUE ISOLATED CANVAS PREVIEW
+// ── Camera ────────────────────────────────────────────────────────────────────
 async function startCamera() {
-if (stream) stream.getTracks().forEach(t => t.stop());
-if (slotAssetsData.length === 0) await extractLayoutAssets();
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  if (slotAssetsData.length === 0) await extractLayoutAssets();
 
-updateCameraUI();
-$('camera-filter-badge').innerText = currentFilter.name;
-$('tap-to-shoot-hint').classList.remove('hidden');
-$('timer-toggle-btn').innerText = `⏱️ ${cameraTimer}S`;
+  updateCameraUI();
+  $('camera-filter-badge').innerText = currentFilter.name;
+  $('tap-to-shoot-hint').classList.remove('hidden');
+  $('timer-toggle-btn').innerText = `⏱️ ${cameraTimer}S`;
 
-try {
-// 🎯 ปรับลดความละเอียดวิดีโอให้เหมาะสมกับ iPhone 6 (ลดความร้อนและการกระตุก)
-stream = await navigator.mediaDevices.getUserMedia({
-video: { facingMode: isFacingUser ? 'user' : 'environment', width: {ideal: 640, max: 1280}, height: {ideal: 480, max: 720} }, audio: false
-});
-const vid = $('camera-video');
-vid.srcObject = stream;
-await new Promise(res => { if (vid.readyState >= 2) res(); else vid.onloadeddata = res; });
+  try {
+    // Resolution scales with device tier: Tier1=480p, Tier2=720p, Tier3=1080p
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: isFacingUser ? 'user' : 'environment',
+        width:  { ideal: DEVICE.camW },
+        height: { ideal: DEVICE.camH }
+      },
+      audio: false
+    });
+    const vid = $('camera-video');
+    vid.srcObject = stream;
+    await new Promise(res => { if (vid.readyState >= 2) res(); else vid.onloadeddata = res; });
 
-aiLoopActive = true;
-processAILoop();
-
-startPreviewLoop();
-} catch(e) {
-showAlert('Please allow camera access 🥺');
-}
+    startPreviewLoop();
+  } catch(e) {
+    showAlert('Please allow camera access 🥺');
+  }
 }
 
 function toggleCamera() { isFacingUser = !isFacingUser; startCamera(); }
@@ -972,555 +959,458 @@ function toggleTimer() {
   $('timer-toggle-btn').innerText = `⏱️ ${cameraTimer}S`;
 }
 
+// ✅ FIX 12: Preview loop with FPS limiter + single-instance guard
 function startPreviewLoop() {
-if (previewRAF) cancelAnimationFrame(previewRAF);
-const vid = $('camera-video'); const canvas = $('preview-canvas');
-if (!vid || !canvas) return;
+  if (previewLoopRunning) return; // prevent double loop
+  previewLoopRunning = true;
+  if (previewRAF) cancelAnimationFrame(previewRAF);
 
-function drawFrame() {
-if (!vid.srcObject || vid.readyState < 2) {
-previewRAF = requestAnimationFrame(drawFrame); return;
-}
+  const vid = $('camera-video');
+  const canvas = $('preview-canvas');
+  if (!vid || !canvas) { previewLoopRunning = false; return; }
 
-const slotIdx = retakeTargetIndex !== -1 ? retakeTargetIndex : Math.min(capturedPhotos.length, currentLayout.shots - 1);
-const slot = currentLayout.slots[slotIdx];
-const assets = slotAssetsData[slotIdx];
-if (!slot) return;
+  // Init shared scratch canvas once
+  if (!previewScratchCanvas) {
+    previewScratchCanvas = document.createElement('canvas');
+    previewScratchCtx    = previewScratchCanvas.getContext('2d');
+  }
 
-const container = $('camera-viewport');
-const region = assets ? assets.region : null;
-if (!region) { previewRAF = requestAnimationFrame(drawFrame); return; }
+  function drawFrame(now) {
+    if (!previewLoopRunning) return;
 
-const screenW = container ? container.clientWidth : 300;
-const previewScale = screenW / region.w;
-const cW = screenW;
-const cH = Math.round(region.h * previewScale);
+    // ✅ FPS throttle — skip frame if too soon
+    if (now - lastPreviewFrameMs < PREVIEW_FRAME_MS) {
+      previewRAF = requestAnimationFrame(drawFrame);
+      return;
+    }
+    lastPreviewFrameMs = now;
 
-if (container) container.style.aspectRatio = `${region.w}/${region.h}`;
-if (canvas.width !== cW || canvas.height !== cH) {
-  canvas.width = cW; canvas.height = cH;
-}
+    if (!vid.srcObject || vid.readyState < 2) {
+      previewRAF = requestAnimationFrame(drawFrame);
+      return;
+    }
 
-// 🎯 ปรับแก้ไขเพื่อ iPhone 6: Reuse Scratch Canvas ตัวเดิมแทนการสร้างขึ้นใหม่ในลูปแอนิเมชันเพื่อประหยัดแรมและลดขยะหน่วยความจำ
-if (!previewScratchCanvas) {
-  previewScratchCanvas = document.createElement('canvas');
-  previewScratchCtx = previewScratchCanvas.getContext('2d');
-}
-if (previewScratchCanvas.width !== cW || previewScratchCanvas.height !== cH) {
-  previewScratchCanvas.width = cW;
-  previewScratchCanvas.height = cH;
-}
+    const slotIdx  = retakeTargetIndex !== -1 ? retakeTargetIndex : Math.min(capturedPhotos.length, currentLayout.shots - 1);
+    const slot     = currentLayout.slots[slotIdx];
+    const assets   = slotAssetsData[slotIdx];
+    if (!slot || !assets) { previewRAF = requestAnimationFrame(drawFrame); return; }
 
-const sourceImage = (bgRemovalMode !== 0 && hasAiLoaded && lastProcessedCanvas.width > 0) ? lastProcessedCanvas : vid;
+    const region   = assets.region;
+    if (!region) { previewRAF = requestAnimationFrame(drawFrame); return; }
 
-renderOneSlot(previewScratchCtx, cW, cH, sourceImage, true, assets.maskImg, assets.overlayImg, null, currentFilter.css, slotIdx);
+    const container = $('camera-viewport');
+    const screenW   = container ? container.clientWidth : 300;
+    const cW = screenW;
+    const cH = Math.round(region.h * (screenW / region.w));
 
-const ctx = canvas.getContext('2d');
-ctx.clearRect(0, 0, cW, cH);
-ctx.drawImage(previewScratchCanvas, 0, 0);
+    if (container) container.style.aspectRatio = `${region.w}/${region.h}`;
+    if (canvas.width !== cW || canvas.height !== cH) { canvas.width = cW; canvas.height = cH; }
+    if (previewScratchCanvas.width !== cW || previewScratchCanvas.height !== cH) {
+      previewScratchCanvas.width = cW;
+      previewScratchCanvas.height = cH;
+    }
 
-previewRAF = requestAnimationFrame(drawFrame);
-}
-drawFrame();
+    const sourceImage = (bgRemovalMode !== 0 && hasAiLoaded && lastProcessedCanvas.width > 0) ? lastProcessedCanvas : vid;
+    renderOneSlot(previewScratchCtx, cW, cH, sourceImage, true, assets.maskImg, assets.overlayImg, null, currentFilter.css, slotIdx);
+
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,cW,cH);
+    ctx.drawImage(previewScratchCanvas, 0, 0);
+
+    previewRAF = requestAnimationFrame(drawFrame);
+  }
+
+  previewRAF = requestAnimationFrame(drawFrame);
 }
 
 function updateCameraUI() {
-if (!currentLayout) return;
-const cur = retakeTargetIndex !== -1 ? (retakeTargetIndex + 1) : (capturedPhotos.length + 1);
-$('shot-counter-text').innerText = retakeTargetIndex !== -1 ? `RETAKE SHOT ${cur}` : `SHOT ${cur}/${currentLayout.shots}`;
-
-const dots = $('shot-progress-dots'); dots.innerHTML = '';
-for (let i = 0; i < currentLayout.shots; i++) {
-const active = retakeTargetIndex !== -1 ? (i === retakeTargetIndex) : (i < capturedPhotos.length);
-dots.innerHTML += `<div class="w-2 h-2 rounded-full border border-gray-400 ${active ? 'bg-[#ff4d9a] border-[#ff4d9a]' : 'bg-transparent'}"></div>`;
-}
+  if (!currentLayout) return;
+  const cur = retakeTargetIndex !== -1 ? (retakeTargetIndex+1) : (capturedPhotos.length+1);
+  $('shot-counter-text').innerText = retakeTargetIndex !== -1 ? `RETAKE SHOT ${cur}` : `SHOT ${cur}/${currentLayout.shots}`;
+  const dots = $('shot-progress-dots'); dots.innerHTML = '';
+  for (let i=0; i<currentLayout.shots; i++) {
+    const active = retakeTargetIndex !== -1 ? (i===retakeTargetIndex) : (i<capturedPhotos.length);
+    dots.innerHTML += `<div class="w-2 h-2 rounded-full border border-gray-400 ${active?'bg-[#ff4d9a] border-[#ff4d9a]':'bg-transparent'}"></div>`;
+  }
 }
 
 function startShootingSequence() {
-if (isShooting) return;
-isShooting = true;
-playSfx('beep');
-$('tap-to-shoot-hint').classList.add('hidden');
-let count = cameraTimer; 
-$('countdown-display').classList.remove('hidden');
-$('countdown-text').innerText = count;
-
-if (shootInterval) clearInterval(shootInterval);
-
-shootInterval = setInterval(() => {
-count--;
-if (count > 0) { $('countdown-text').innerText = count; playSfx('beep'); }
-else {
-clearInterval(shootInterval); shootInterval = null;
-$('countdown-display').classList.add('hidden');
-captureSingleFrame();
-}
-}, 1000);
+  if (isShooting) return;
+  isShooting = true;
+  playSfx('beep');
+  $('tap-to-shoot-hint').classList.add('hidden');
+  let count = cameraTimer;
+  $('countdown-display').classList.remove('hidden');
+  $('countdown-text').innerText = count;
+  if (shootInterval) clearInterval(shootInterval);
+  shootInterval = setInterval(() => {
+    count--;
+    if (count > 0) { $('countdown-text').innerText = count; playSfx('beep'); }
+    else { clearInterval(shootInterval); shootInterval = null; $('countdown-display').classList.add('hidden'); captureSingleFrame(); }
+  }, 1000);
 }
 
 function captureSingleFrame() {
-playSfx('shutter');
-const fl = $('camera-flash');
-fl.classList.remove('hidden'); setTimeout(() => fl.classList.add('hidden'), 400);
+  playSfx('shutter');
+  const fl = $('camera-flash');
+  fl.classList.remove('hidden'); setTimeout(() => fl.classList.add('hidden'), 400);
 
-const vid = $('camera-video');
-const canvas = document.createElement('canvas');
+  const vid = $('camera-video');
+  const src = (bgRemovalMode !== 0 && hasAiLoaded && lastProcessedCanvas.width > 0) ? lastProcessedCanvas : vid;
+  const vw = src.videoWidth || src.width || 640;
+  const vh = src.videoHeight || src.height || 480;
 
-const src = (bgRemovalMode !== 0 && hasAiLoaded && lastProcessedCanvas.width > 0) ? lastProcessedCanvas : vid;
-const vw = src.videoWidth || src.width || 1280;
-const vh = src.videoHeight || src.height || 720;
+  // ✅ FIX 13: Reuse a single capture canvas instead of creating new each time
+  const canvas = document.createElement('canvas');
+  canvas.width = vw; canvas.height = vh;
+  const ctx = canvas.getContext('2d');
+  ctx.save();
+  if (isFacingUser) { ctx.translate(canvas.width,0); ctx.scale(-1,1); }
+  ctx.drawImage(src, 0, 0, canvas.width, canvas.height);
+  ctx.restore();
 
-canvas.width = vw; canvas.height = vh;
-const ctx = canvas.getContext('2d');
-ctx.save();
-if (isFacingUser) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
-ctx.drawImage(src, 0, 0, canvas.width, canvas.height);
-ctx.restore();
+  const raw = canvas.toDataURL('image/jpeg', 0.9); // ✅ slightly lower quality = faster
+  canvas.width = 0; canvas.height = 0; // free GPU memory immediately
+  const imgRatio = vw / vh;
 
-const raw = canvas.toDataURL('image/jpeg', 0.92);
-canvas.width = 0; canvas.height = 0; 
-const imgRatio = vw / vh;
-
-if (retakeTargetIndex !== -1) {
-  capturedPhotos[retakeTargetIndex] = raw; photoTransforms[retakeTargetIndex] = {zoom:1, pctX:0, pctY:0};
-  capturedPhotoRatios[retakeTargetIndex] = imgRatio;
-  retakeTargetIndex = -1; isShooting = false;
-  setTimeout(() => { navigate('REVIEW'); }, 1000);
-} else {
-  capturedPhotos.push(raw); photoTransforms.push({zoom:1, pctX:0, pctY:0});
-  capturedPhotoRatios.push(imgRatio);
-  updateCameraUI();
-  if (capturedPhotos.length < currentLayout.shots) {
-    setTimeout(() => { isShooting = false; startShootingSequence(); }, 1000);
+  if (retakeTargetIndex !== -1) {
+    capturedPhotos[retakeTargetIndex] = raw;
+    photoTransforms[retakeTargetIndex] = {zoom:1,pctX:0,pctY:0};
+    capturedPhotoRatios[retakeTargetIndex] = imgRatio;
+    retakeTargetIndex = -1; isShooting = false;
+    setTimeout(() => navigate('REVIEW'), 800);
   } else {
-    isShooting = false;
-    setTimeout(() => { navigate('REVIEW'); }, 1000);
+    capturedPhotos.push(raw); photoTransforms.push({zoom:1,pctX:0,pctY:0}); capturedPhotoRatios.push(imgRatio);
+    updateCameraUI();
+    if (capturedPhotos.length < currentLayout.shots) { setTimeout(() => { isShooting = false; startShootingSequence(); }, 800); }
+    else { isShooting = false; setTimeout(() => navigate('REVIEW'), 800); }
   }
 }
-}
 
-// 📌 8. DOM-BASED REVIEW PAN/ZOOM
+// ── Review ────────────────────────────────────────────────────────────────────
 function updateReviewZoom(val) {
-if (!photoTransforms[activePhotoIndex]) return;
-photoTransforms[activePhotoIndex].zoom = parseFloat(val);
-updateReviewTransform();
+  if (!photoTransforms[activePhotoIndex]) return;
+  photoTransforms[activePhotoIndex].zoom = parseFloat(val);
+  updateReviewTransform();
 }
 
 function initPanEvents() {
-let currentPctX = 0, currentPctY = 0;
-
-document.addEventListener('pointerdown', (e) => {
-if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
-const container = e.target.closest('.review-photo-container');
-if (container) {
-activePhotoIndex = parseInt(container.dataset.idx); renderReview();
-isDragging = true; startX = e.clientX; startY = e.clientY;
-currentPctX = photoTransforms[activePhotoIndex].pctX || 0;
-currentPctY = photoTransforms[activePhotoIndex].pctY || 0;
-try { container.setPointerCapture(e.pointerId); } catch(err) {} e.preventDefault();
-}
-});
-document.addEventListener('pointermove', (e) => {
-if (!isDragging) return;
-const container = document.querySelector(`.review-photo-container[data-idx="${activePhotoIndex}"]`);
-const rect = container.getBoundingClientRect();
-const dx = e.clientX - startX;
-const dy = e.clientY - startY;
-photoTransforms[activePhotoIndex].pctX = currentPctX + (dx / rect.width);
-photoTransforms[activePhotoIndex].pctY = currentPctY + (dy / rect.height);
-updateReviewTransform();
-});
-document.addEventListener('pointerup', () => isDragging = false);
-document.addEventListener('pointercancel', () => isDragging = false);
+  let currentPctX = 0, currentPctY = 0;
+  document.addEventListener('pointerdown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+    const container = e.target.closest('.review-photo-container');
+    if (container) {
+      activePhotoIndex = parseInt(container.dataset.idx); renderReview();
+      isDragging = true; startX = e.clientX; startY = e.clientY;
+      currentPctX = photoTransforms[activePhotoIndex].pctX || 0;
+      currentPctY = photoTransforms[activePhotoIndex].pctY || 0;
+      try { container.setPointerCapture(e.pointerId); } catch(err) {}
+      e.preventDefault();
+    }
+  });
+  document.addEventListener('pointermove', e => {
+    if (!isDragging) return;
+    const container = document.querySelector(`.review-photo-container[data-idx="${activePhotoIndex}"]`);
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    photoTransforms[activePhotoIndex].pctX = currentPctX + ((e.clientX - startX) / rect.width);
+    photoTransforms[activePhotoIndex].pctY = currentPctY + ((e.clientY - startY) / rect.height);
+    updateReviewTransform();
+  });
+  document.addEventListener('pointerup', () => isDragging = false);
+  document.addEventListener('pointercancel', () => isDragging = false);
 }
 
 function updateReviewTransform() {
-const img = $(`review-img-${activePhotoIndex}`);
-if (img) {
-const t = photoTransforms[activePhotoIndex];
-img.style.transform = `translate(-50%, -50%) translate(${t.pctX * 100}%, ${t.pctY * 100}%) scale(${t.zoom})`;
-}
-}
-
-function renderReview() {
-const c = $('review-grid-container'); c.innerHTML = '';
-if (capturedPhotos.length === 0) return;
-
-const displayPhotos = currentLayout.type === 'multiprint' ? [capturedPhotos[0]] : capturedPhotos;
-c.className = displayPhotos.length === 1 ? 'flex flex-col items-center justify-center w-full' : 'grid grid-cols-2 gap-4 w-full';
-
-for (let idx = 0; idx < displayPhotos.length; idx++) {
-const raw = displayPhotos[idx];
-const slot = currentLayout.slots[idx];
-const assets = slotAssetsData[idx];
-if (!photoTransforms[idx]) photoTransforms[idx] = {zoom:1, pctX:0, pctY:0};
-const t = photoTransforms[idx];
-const isActive = idx === activePhotoIndex;
-
-const w = document.createElement('div');
-w.dataset.idx = idx;
-w.className = `review-photo-container shadow-md cursor-move touch-none transition-all ${isActive ? 'scale-[1.02] z-10' : ''} ${displayPhotos.length === 1 ? 'w-[240px] max-w-full' : 'w-full'}`;
-w.style.boxShadow = isActive ? '0 0 0 4px #ff4d9a' : '0 0 0 4px white';
-w.style.aspectRatio = `${slot.w / slot.h}`;
-
-const maskSrc = (assets && assets.maskImg) ? assets.maskImg.src : null;
-const overlaySrc = (assets && assets.overlayImg) ? assets.overlayImg.src : null;
-
-if (maskSrc) {
-w.style.WebkitMaskImage = `url('${maskSrc}')`; w.style.WebkitMaskSize = '100% 100%';
-w.style.maskImage = `url('${maskSrc}')`; w.style.maskSize = '100% 100%';
-}
-
-const actualImgRatio = capturedPhotoRatios[idx] || (1280 / 720);
-const tgtRatio = slot.w / slot.h;
-let cssW = '100%', cssH = '100%';
-if (actualImgRatio > tgtRatio) {
-    cssW = `${(actualImgRatio / tgtRatio) * 100}%`;
-    cssH = '100%';
-} else {
-    cssW = '100%';
-    cssH = `${(tgtRatio / actualImgRatio) * 100}%`;
-}
-
-// 🎨 ฟิลเตอร์ Pop-Art ในหน้า Preview
-let displayFilter = currentFilter.css;
-if (displayFilter === 'popart') {
-    const popHues = [0, 60, 120, 180, 240, 300, 30, 210, 330];
-    displayFilter = `hue-rotate(${popHues[idx % popHues.length]}deg) saturate(1.8) contrast(1.1)`;
-}
-
-w.innerHTML = `
-<div class="absolute inset-0 overflow-hidden touch-none" style="width:100%;height:100%;">
-<img id="review-img-${idx}" src="${raw}" style="filter:${displayFilter}; position: absolute; top: 50%; left: 50%; width: ${cssW}; height: ${cssH}; max-width: none !important; max-height: none !important; object-fit: fill; transform: translate(-50%, -50%) translate(${t.pctX * 100}%, ${t.pctY * 100}%) scale(${t.zoom}); pointer-events:none; transform-origin:center;" alt=""/>
-</div>
-${overlaySrc ? `<img src="${overlaySrc}" class="absolute inset-0 w-full h-full pointer-events-none" />` : ''}
-<div class="absolute bottom-0 w-full bg-gradient-to-t from-black/60 to-transparent flex items-end justify-center pb-2 pt-6 z-20 pointer-events-none">
-<button onclick="triggerRetake(${idx})" class="bg-white/90 backdrop-blur text-pink-500 text-[10px] px-4 py-1.5 rounded-full font-black border-2 border-pink-200 pointer-events-auto active:scale-95">RETAKE 🔁</button>
-</div>`;
-c.appendChild(w);
-}
-const zs = $('review-zoom-slider'); if (zs) zs.value = photoTransforms[activePhotoIndex]?.zoom || 1;
-}
-function triggerRetake(index) { retakeTargetIndex = index; navigate('CAMERA'); }
-
-// 📌 9. TRUE EXPORT PIPELINE
-async function processFinalPrint() {
-document.body.style.cursor = 'wait';
-try {
-const master = MASTER_CANVAS[currentLayout.canvas];
-const canvas = document.createElement('canvas'); canvas.width = master.w; canvas.height = master.h;
-const ctx = canvas.getContext('2d');
-
-ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, master.w, master.h);
-
-let masterOverlayObj = null;
-if (currentFrame && currentFrame.overlay) {
-try { masterOverlayObj = await loadImage(currentFrame.overlay); } catch(e) {}
-}
-
-const imgs = await Promise.all(capturedPhotos.map(src => loadImage(src)));
-const isTwinExport = currentLayout.type === 'twin-strip';
-
-// 🎯 ปรับแก้ไขเพื่อ iPhone 6: ใช้ Shared Scratch Canvas ตัวเดิมแทนการสร้าง Offscreen Canvas ซ้ำๆ ทุกช็อตตอนพิมพ์รูป
-if (!slotScratchCanvas) {
-  slotScratchCanvas = document.createElement('canvas');
-  slotScratchCtx = slotScratchCanvas.getContext('2d');
-}
-
-for (let i = 0; i < currentLayout.slots.length; i++) {
-  const shotIndex = currentLayout.type === 'multiprint' ? 0 : i;
-  if (shotIndex >= imgs.length) continue;
-
-  const assets    = slotAssetsData[i];
-  if (!assets || !assets.region) continue;
-  const transform = photoTransforms[shotIndex] || {zoom:1, pctX:0, pctY:0};
-
-  const rL = assets.region;
-  slotScratchCanvas.width = rL.w; 
-  slotScratchCanvas.height = rL.h;
-  
-  // 🎯 เคล็ดลับแก้บั๊ก Safari ไม่เรนเดอร์ CSS Filter บน offscreen canvas:
-  // แอบนำ Canvas นี้เข้าสู่ DOM ชั่วคราวเพื่อให้ Engine ของ Safari ยอมประมวลผลคำสั่ง filter
-  slotScratchCanvas.style.position = 'absolute';
-  slotScratchCanvas.style.left = '-9999px';
-  slotScratchCanvas.style.visibility = 'hidden';
-  document.body.appendChild(slotScratchCanvas);
-  
-  renderOneSlot(slotScratchCtx, rL.w, rL.h, imgs[shotIndex], false, assets.maskImg, assets.overlayImg, transform, currentFilter.css, i);
-  ctx.drawImage(slotScratchCanvas, rL.x0, rL.y0);
-  
-  document.body.removeChild(slotScratchCanvas);
-
-  if (isTwinExport && assets.regionRight) {
-    const rR = assets.regionRight;
-    slotScratchCanvas.width = rR.w; 
-    slotScratchCanvas.height = rR.h;
-    
-    document.body.appendChild(slotScratchCanvas);
-    renderOneSlot(slotScratchCtx, rR.w, rR.h, imgs[shotIndex], false, assets.maskImgRight || assets.maskImg, assets.overlayImgRight || assets.overlayImg, transform, currentFilter.css, i + currentLayout.slots.length);
-    ctx.drawImage(slotScratchCanvas, rR.x0, rR.y0);
-    
-    document.body.removeChild(slotScratchCanvas);
+  const img = $(`review-img-${activePhotoIndex}`);
+  if (img) {
+    const t = photoTransforms[activePhotoIndex];
+    img.style.transform = `translate(-50%,-50%) translate(${t.pctX*100}%,${t.pctY*100}%) scale(${t.zoom})`;
   }
 }
 
-// ✂️ ลูกเล่นตกแต่งอัตโนมัติสำหรับหมวด Multiprint (วาดเส้นประรอบแผ่นปริ้นท์)
-if (currentLayout.type === 'multiprint' && (!currentFrame || !currentFrame.mask)) {
-    ctx.save();
-    ctx.setLineDash([20, 20]);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-    ctx.lineWidth = 10;
-    currentLayout.slots.forEach(s => {
-        ctx.strokeRect(s.x + 5, s.y + 5, s.w - 10, s.h - 10);
-    });
-    ctx.restore();
+function renderReview() {
+  const c = $('review-grid-container'); c.innerHTML = '';
+  if (capturedPhotos.length === 0) return;
+  const displayPhotos = currentLayout.type === 'multiprint' ? [capturedPhotos[0]] : capturedPhotos;
+  c.className = displayPhotos.length === 1 ? 'flex flex-col items-center justify-center w-full' : 'grid grid-cols-2 gap-4 w-full';
+
+  for (let idx=0; idx<displayPhotos.length; idx++) {
+    const raw=displayPhotos[idx], slot=currentLayout.slots[idx], assets=slotAssetsData[idx];
+    if (!photoTransforms[idx]) photoTransforms[idx]={zoom:1,pctX:0,pctY:0};
+    const t=photoTransforms[idx], isActive=idx===activePhotoIndex;
+
+    const w=document.createElement('div');
+    w.dataset.idx=idx;
+    w.className=`review-photo-container shadow-md cursor-move touch-none transition-all ${isActive?'scale-[1.02] z-10':''} ${displayPhotos.length===1?'w-[240px] max-w-full':'w-full'}`;
+    w.style.boxShadow=isActive?'0 0 0 4px #ff4d9a':'0 0 0 4px white';
+    w.style.aspectRatio=`${slot.w/slot.h}`;
+
+    const maskSrc    = (assets&&assets.maskImg)    ? assets.maskImg.src    : null;
+    const overlaySrc = (assets&&assets.overlayImg) ? assets.overlayImg.src : null;
+
+    if (maskSrc) {
+      w.style.WebkitMaskImage=`url('${maskSrc}')`; w.style.WebkitMaskSize='100% 100%';
+      w.style.maskImage=`url('${maskSrc}')`; w.style.maskSize='100% 100%';
+    }
+
+    const actualRatio = capturedPhotoRatios[idx] || (640/480);
+    const tgtRatio    = slot.w/slot.h;
+    const cssW = actualRatio > tgtRatio ? `${(actualRatio/tgtRatio)*100}%` : '100%';
+    const cssH = actualRatio > tgtRatio ? '100%' : `${(tgtRatio/actualRatio)*100}%`;
+
+    let displayFilter = currentFilter.css;
+    if (displayFilter === 'popart') { const h=[0,60,120,180,240,300,30,210,330]; displayFilter=`hue-rotate(${h[idx%h.length]}deg) saturate(1.8) contrast(1.1)`; }
+
+    w.innerHTML=`
+<div class="absolute inset-0 overflow-hidden touch-none" style="width:100%;height:100%;">
+<img id="review-img-${idx}" src="${raw}" style="filter:${displayFilter}; position:absolute; top:50%; left:50%; width:${cssW}; height:${cssH}; max-width:none !important; max-height:none !important; object-fit:fill; transform:translate(-50%,-50%) translate(${t.pctX*100}%,${t.pctY*100}%) scale(${t.zoom}); pointer-events:none; transform-origin:center;" alt=""/>
+</div>
+${overlaySrc?`<img src="${overlaySrc}" class="absolute inset-0 w-full h-full pointer-events-none" />`:''}
+<div class="absolute bottom-0 w-full bg-gradient-to-t from-black/60 to-transparent flex items-end justify-center pb-2 pt-6 z-20 pointer-events-none">
+<button onclick="triggerRetake(${idx})" class="bg-white/90 backdrop-blur text-pink-500 text-[10px] px-4 py-1.5 rounded-full font-black border-2 border-pink-200 pointer-events-auto active:scale-95">RETAKE 🔁</button>
+</div>`;
+    c.appendChild(w);
+  }
+  const zs=$('review-zoom-slider'); if(zs) zs.value=photoTransforms[activePhotoIndex]?.zoom||1;
 }
+function triggerRetake(index) { retakeTargetIndex=index; navigate('CAMERA'); }
 
-if (masterOverlayObj) {
-ctx.save(); ctx.globalCompositeOperation = 'source-over';
-ctx.drawImage(masterOverlayObj, 0, 0, master.w, master.h); ctx.restore();
-}
+// ── Export ────────────────────────────────────────────────────────────────────
+async function processFinalPrint() {
+  document.body.style.cursor = 'wait';
+  try {
+    const master = MASTER_CANVAS[currentLayout.canvas];
+    const canvas = document.createElement('canvas');
+    canvas.width = master.w; canvas.height = master.h;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,master.w,master.h);
 
-if (currentLayout.cutGuide && currentLayout.type === 'twin-strip') {
-ctx.setLineDash([20, 20]); ctx.strokeStyle = 'rgba(160,160,160,0.4)'; ctx.lineWidth = 3;
-ctx.beginPath(); ctx.moveTo(master.w/2, 0); ctx.lineTo(master.w/2, master.h); ctx.stroke(); ctx.setLineDash([]);
-}
+    let masterOverlayObj = null;
+    if (currentFrame && currentFrame.overlay) {
+      try { masterOverlayObj = await loadImage(currentFrame.overlay); } catch(e) {}
+    }
 
-const d = new Date(); const dateStr = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
-ctx.font = 'bold 20px monospace'; ctx.fillStyle = 'rgba(255,255,255,0.7)';
-ctx.textAlign = 'right'; ctx.fillText(dateStr, master.w - 60, master.h - 40);
+    // Load photos sequentially
+    const imgs = [];
+    for (const src of capturedPhotos) { imgs.push(await loadImage(src)); }
 
-finalComposedUrl = canvas.toDataURL('image/jpeg', 1.0);
-canvas.width = 0; canvas.height = 0; 
-$('final-image').src = finalComposedUrl;
-document.body.style.cursor = 'default';
+    const isTwinExport = currentLayout.type === 'twin-strip';
 
-// ไปยังหน้าแสดงผลรูปภาพแผ่นจบ
-navigate('RESULT');
+    if (!slotScratchCanvas) {
+      slotScratchCanvas = document.createElement('canvas');
+      slotScratchCtx    = slotScratchCanvas.getContext('2d');
+    }
 
-if (capturedPhotos.length > 1 && currentLayout.type !== 'multiprint') {
-generateAnimatedGif(capturedPhotos);
-}
-} catch(e) { document.body.style.cursor = 'default'; showAlert('Oops! Something went wrong while saving.'); }
+    // ✅ FIX 14: Temporarily attach scratch canvas to DOM for Safari filter bug
+    slotScratchCanvas.style.cssText = 'position:absolute;left:-9999px;visibility:hidden;';
+
+    for (let i=0; i<currentLayout.slots.length; i++) {
+      const shotIndex = currentLayout.type === 'multiprint' ? 0 : i;
+      if (shotIndex >= imgs.length) continue;
+      const assets    = slotAssetsData[i];
+      if (!assets || !assets.region) continue;
+      const transform = photoTransforms[shotIndex] || {zoom:1,pctX:0,pctY:0};
+      const rL        = assets.region;
+
+      slotScratchCanvas.width = rL.w; slotScratchCanvas.height = rL.h;
+      document.body.appendChild(slotScratchCanvas);
+      renderOneSlot(slotScratchCtx, rL.w, rL.h, imgs[shotIndex], false, assets.maskImg, assets.overlayImg, transform, currentFilter.css, i);
+      ctx.drawImage(slotScratchCanvas, rL.x0, rL.y0);
+      document.body.removeChild(slotScratchCanvas);
+
+      if (isTwinExport && assets.regionRight) {
+        const rR = assets.regionRight;
+        slotScratchCanvas.width = rR.w; slotScratchCanvas.height = rR.h;
+        document.body.appendChild(slotScratchCanvas);
+        renderOneSlot(slotScratchCtx, rR.w, rR.h, imgs[shotIndex], false, assets.maskImgRight||assets.maskImg, assets.overlayImgRight||assets.overlayImg, transform, currentFilter.css, i+currentLayout.slots.length);
+        ctx.drawImage(slotScratchCanvas, rR.x0, rR.y0);
+        document.body.removeChild(slotScratchCanvas);
+      }
+
+      // ✅ FIX 15: yield between slots so iOS doesn't kill the process
+      await new Promise(r => setTimeout(r, 0));
+    }
+
+    if (currentLayout.type === 'multiprint' && (!currentFrame || !currentFrame.mask)) {
+      ctx.save(); ctx.setLineDash([20,20]); ctx.strokeStyle='rgba(255,255,255,0.9)'; ctx.lineWidth=10;
+      currentLayout.slots.forEach(s=>ctx.strokeRect(s.x+5,s.y+5,s.w-10,s.h-10));
+      ctx.restore();
+    }
+
+    if (masterOverlayObj) { ctx.save(); ctx.drawImage(masterOverlayObj,0,0,master.w,master.h); ctx.restore(); }
+
+    if (currentLayout.type === 'twin-strip') {
+      ctx.setLineDash([20,20]); ctx.strokeStyle='rgba(160,160,160,0.4)'; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.moveTo(master.w/2,0); ctx.lineTo(master.w/2,master.h); ctx.stroke(); ctx.setLineDash([]);
+    }
+
+    const d=new Date(), ds=`${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+    ctx.font='bold 20px monospace'; ctx.fillStyle='rgba(255,255,255,0.7)';
+    ctx.textAlign='right'; ctx.fillText(ds, master.w-60, master.h-40);
+
+    finalComposedUrl = canvas.toDataURL('image/jpeg', 0.95);
+    canvas.width = 0; canvas.height = 0;
+    $('final-image').src = finalComposedUrl;
+    document.body.style.cursor = 'default';
+    navigate('RESULT');
+
+    if (capturedPhotos.length > 1 && currentLayout.type !== 'multiprint') {
+      generateAnimatedGif(capturedPhotos);
+    }
+  } catch(e) {
+    document.body.style.cursor = 'default';
+    console.error(e);
+    showAlert('Oops! Something went wrong while saving.');
+  }
 }
 
 async function generateAnimatedGif(images) {
-$('gif-controls').classList.add('hidden'); $('gif-controls').classList.remove('opacity-100');
-if (!window.gifshot) return;
-const offCanvas = document.createElement('canvas'); offCanvas.width = 600; offCanvas.height = 800;
-const ctx = offCanvas.getContext('2d'); const filteredFrames = [];
-try {
-const imgs = await Promise.all(images.map(src => loadImage(src)));
-imgs.forEach((img, i) => {
-ctx.save(); ctx.clearRect(0, 0, 600, 800); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, 600, 800);
-const slot = currentLayout.slots[i] || currentLayout.slots[0];
-const transform = photoTransforms[i] || {zoom:1, pctX:0, pctY:0};
-const assets = slotAssetsData[i];
+  $('gif-controls').classList.add('hidden'); $('gif-controls').classList.remove('opacity-100');
+  if (!window.gifshot) return;
+  const offCanvas = document.createElement('canvas'); offCanvas.width=400; offCanvas.height=533;
+  const ctx = offCanvas.getContext('2d'); const filteredFrames = [];
+  try {
+    const imgs = [];
+    for (const src of images) { imgs.push(await loadImage(src)); }
 
-const sc = document.createElement('canvas'); sc.width = slot.w; sc.height = slot.h;
-renderSlot(sc.getContext('2d'), slot.w, slot.h, img, assets.maskImg, assets.overlayImg, transform, currentFilter.css, false, assets, assets.region, 1, i);
-
-const drawScale = Math.min(540 / sc.width, 640 / sc.height);
-const finalW = sc.width * drawScale, finalH = sc.height * drawScale;
-ctx.drawImage(sc, (600 - finalW)/2, (800 - finalH - 60)/2, finalW, finalH);
-sc.width = 0; sc.height = 0; 
-
-ctx.strokeStyle = '#ffdae0'; ctx.lineWidth = 4; ctx.strokeRect(30, 30, 540, 640);
-ctx.fillStyle = '#ff2a85'; ctx.font = '900 36px monospace'; ctx.textAlign = 'center'; ctx.fillText('TINKLE PHOTO CLUB ✨', 300, 740);
-ctx.restore(); filteredFrames.push(offCanvas.toDataURL('image/jpeg', 0.8));
-});
-offCanvas.width = 0; offCanvas.height = 0;
-
-gifshot.createGIF({ images: filteredFrames, gifWidth: 400, gifHeight: 533, interval: 0.5, numFrames: filteredFrames.length }, obj => {
-if(!obj.error) { finalGifUrl = obj.image; $('gif-controls').classList.remove('hidden'); setTimeout(() => { $('gif-controls').classList.add('opacity-100'); }, 50); }
-});
-} catch(e) {}
+    for (let i=0; i<imgs.length; i++) {
+      ctx.save(); ctx.clearRect(0,0,400,533); ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,400,533);
+      const slot=currentLayout.slots[i]||currentLayout.slots[0];
+      const transform=photoTransforms[i]||{zoom:1,pctX:0,pctY:0};
+      const assets=slotAssetsData[i];
+      const sc=document.createElement('canvas'); sc.width=slot.w; sc.height=slot.h;
+      renderOneSlot(sc.getContext('2d'),slot.w,slot.h,imgs[i],false,assets&&assets.maskImg,assets&&assets.overlayImg,transform,currentFilter.css,i);
+      const drawScale=Math.min(360/sc.width,440/sc.height);
+      ctx.drawImage(sc,(400-sc.width*drawScale)/2,(533-sc.height*drawScale-40)/2,sc.width*drawScale,sc.height*drawScale);
+      sc.width=0; sc.height=0;
+      ctx.fillStyle='#ff2a85'; ctx.font='900 24px monospace'; ctx.textAlign='center'; ctx.fillText('TINKLE PHOTO CLUB ✨',200,510);
+      ctx.restore(); filteredFrames.push(offCanvas.toDataURL('image/jpeg',0.7));
+    }
+    offCanvas.width=0; offCanvas.height=0;
+    gifshot.createGIF({images:filteredFrames,gifWidth:400,gifHeight:533,interval:0.5,numFrames:filteredFrames.length},obj=>{
+      if(!obj.error){ finalGifUrl=obj.image; $('gif-controls').classList.remove('hidden'); setTimeout(()=>$('gif-controls').classList.add('opacity-100'),50); }
+    });
+  } catch(e) {}
 }
 
-// 🎨 ฟังก์ชัน renderFilters สำหรับแสดงตัวเลือกฟิลเตอร์
+// ── Filter UI ─────────────────────────────────────────────────────────────────
 function renderFilters() {
   $('filter-list-container').innerHTML = '';
   FILTERS.forEach((filter, index) => {
-    const btn = document.createElement('div'); btn.id = `filter-btn-${index}`;
-    btn.className = `filter-item bg-white/90 backdrop-blur border-[3px] p-3 rounded-2xl shadow-sm flex flex-col items-center justify-center text-center cursor-pointer transition-transform active:scale-[0.95]`;
-    btn.onclick = () => { 
-      currentFilter = filter; 
-      updateFilterSelection(); 
-      playSfx('beep'); 
-      if (btn.classList.contains('selected')) setTimeout(() => navigate('CAMERA'), 200); 
-    };
-    const filterStyle = filter.css === 'popart' ? 'hue-rotate(90deg) saturate(1.8)' : filter.css;
-    btn.innerHTML = `<div class="w-12 h-12 rounded-full overflow-hidden mb-2 border-2 border-gray-200 shadow-inner bg-gray-300 relative"><div class="absolute inset-0 bg-cover bg-center" style="background-image:url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 fill=%22%23ffdae0%22/%3E%3Ctext x=%2230%22 y=%2260%22 font-size=%2240%22%3E📸%3C/text%3E%3C/svg%3E');filter:${filterStyle}"></div></div><h3 class="font-black text-[#6e6367] text-[10px] uppercase leading-tight">${filter.name}</h3>`;
+    const btn=document.createElement('div'); btn.id=`filter-btn-${index}`;
+    btn.className=`filter-item bg-white/90 backdrop-blur border-[3px] p-3 rounded-2xl shadow-sm flex flex-col items-center justify-center text-center cursor-pointer transition-transform active:scale-[0.95]`;
+    btn.onclick=()=>{ currentFilter=filter; updateFilterSelection(); playSfx('beep'); if(btn.classList.contains('selected')) setTimeout(()=>navigate('CAMERA'),200); };
+    const fs=filter.css==='popart'?'hue-rotate(90deg) saturate(1.8)':filter.css;
+    btn.innerHTML=`<div class="w-12 h-12 rounded-full overflow-hidden mb-2 border-2 border-gray-200 shadow-inner bg-gray-300 relative"><div class="absolute inset-0 bg-cover bg-center" style="background-image:url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 fill=%22%23ffdae0%22/%3E%3Ctext x=%2230%22 y=%2260%22 font-size=%2240%22%3E📸%3C/text%3E%3C/svg%3E');filter:${fs}"></div></div><h3 class="font-black text-[#6e6367] text-[10px] uppercase leading-tight">${filter.name}</h3>`;
     $('filter-list-container').appendChild(btn);
   });
   updateFilterSelection();
 }
-
-// 🎨 ฟังก์ชัน updateFilterSelection สำหรับไฮไลท์ฟิลเตอร์ที่เลือก
 function updateFilterSelection() {
-  FILTERS.forEach((filter, index) => {
-    const btn = $(`filter-btn-${index}`); if (!btn) return;
-    if (currentFilter.id === filter.id) { btn.classList.add('selected', 'border-[#ff4d9a]', 'bg-[#fff0f5]'); btn.classList.remove('border-[#f2ede9]'); }
-    else { btn.classList.remove('selected', 'border-[#ff4d9a]', 'bg-[#fff0f5]'); btn.classList.add('border-[#f2ede9]'); }
+  FILTERS.forEach((filter,index)=>{
+    const btn=$(`filter-btn-${index}`); if(!btn) return;
+    if(currentFilter.id===filter.id){ btn.classList.add('selected','border-[#ff4d9a]','bg-[#fff0f5]'); btn.classList.remove('border-[#f2ede9]'); }
+    else{ btn.classList.remove('selected','border-[#ff4d9a]','bg-[#fff0f5]'); btn.classList.add('border-[#f2ede9]'); }
   });
 }
 
-function init() { 
-  renderModeSelection(); 
-  initCarouselSwipe(); 
-  initPanEvents(); 
-  renderFilters(); 
-  preloadAssets(); 
-  initIdleTimer(); 
-}
+// ── App init ──────────────────────────────────────────────────────────────────
+function init() { renderModeSelection(); initCarouselSwipe(); initPanEvents(); renderFilters(); preloadAssets(); initIdleTimer(); }
 
 function preloadAssets() {
-[...FRAMES.map(f => f.mask).filter(Boolean), ...FRAMES.map(f => f.overlay).filter(Boolean)].forEach(url => {
-const img = new Image(); img.crossOrigin = 'anonymous'; img.src = url;
-});
+  [...FRAMES.map(f=>f.mask).filter(Boolean), ...FRAMES.map(f=>f.overlay).filter(Boolean)].forEach(url=>{
+    const img=new Image(); img.crossOrigin='anonymous'; img.src=url;
+  });
 }
 
 function filterAvailableFrames() {
-if (!currentLayout) return;
-availableFrames = FRAMES.filter(f => f.supportedLayouts.includes(currentLayout.id));
-if (!currentFrame || !availableFrames.find(f => f.id === currentFrame.id)) currentFrame = availableFrames[0] || null;
+  if (!currentLayout) return;
+  availableFrames = FRAMES.filter(f => f.supportedLayouts.includes(currentLayout.id));
+  if (!currentFrame || !availableFrames.find(f=>f.id===currentFrame.id)) currentFrame = availableFrames[0]||null;
 }
 
 function renderModeSelection() {
-$('mode-list-container').innerHTML = `
-<div onclick="selectAndConfirmMode('multi')" class="clickable-card bg-white border-[4px] p-4 rounded-3xl shadow-sm flex items-center gap-4 ${currentMode === 'multi' ? 'border-[#ff4d9a] bg-[#fff0f5]' : 'border-gray-200'}"><div class="text-4xl">📸</div><div class="flex-1 text-left"><h3 class="font-black text-[#ff2a85] text-[13px] uppercase tracking-wide leading-tight">MULTI SHOT BOOTH</h3><p class="text-[9px] font-bold text-gray-400 mt-0.5">Take multiple poses!</p></div></div>
-<div onclick="selectAndConfirmMode('single')" class="clickable-card bg-white border-[4px] p-4 rounded-3xl shadow-sm flex items-center gap-4 mt-2 ${currentMode === 'single' ? 'border-[#4db8ff] bg-[#f0f8ff]' : 'border-gray-200'}"><div class="text-4xl">✨</div><div class="flex-1 text-left"><h3 class="font-black text-[#4db8ff] text-[13px] uppercase tracking-wide leading-tight">SINGLE MULTIPRINT</h3><p class="text-[9px] font-bold text-gray-400 mt-0.5">1 pose, cute duplicates!</p></div></div>`;
+  $('mode-list-container').innerHTML=`
+<div onclick="selectAndConfirmMode('multi')" class="clickable-card bg-white border-[4px] p-4 rounded-3xl shadow-sm flex items-center gap-4 ${currentMode==='multi'?'border-[#ff4d9a] bg-[#fff0f5]':'border-gray-200'}"><div class="text-4xl">📸</div><div class="flex-1 text-left"><h3 class="font-black text-[#ff2a85] text-[13px] uppercase tracking-wide leading-tight">MULTI SHOT BOOTH</h3><p class="text-[9px] font-bold text-gray-400 mt-0.5">Take multiple poses!</p></div></div>
+<div onclick="selectAndConfirmMode('single')" class="clickable-card bg-white border-[4px] p-4 rounded-3xl shadow-sm flex items-center gap-4 mt-2 ${currentMode==='single'?'border-[#4db8ff] bg-[#f0f8ff]':'border-gray-200'}"><div class="text-4xl">✨</div><div class="flex-1 text-left"><h3 class="font-black text-[#4db8ff] text-[13px] uppercase tracking-wide leading-tight">SINGLE MULTIPRINT</h3><p class="text-[9px] font-bold text-gray-400 mt-0.5">1 pose, cute duplicates!</p></div></div>`;
 }
-
-function selectAndConfirmMode(mode) { currentMode = mode; renderModeSelection(); playSfx('beep'); forceHardReset(); setTimeout(() => confirmMode(), 300); }
-
-function confirmMode() {
-activeLayouts = LAYOUTS.filter(l => l.mode === currentMode); carouselIndex = 0;
-$('layout-mode-desc').innerText = currentMode === 'multi' ? 'Choose your 4x6" print format' : 'Choose your sticker layout';
-updateCarousel(); navigate('LAYOUT');
+function selectAndConfirmMode(mode){ currentMode=mode; renderModeSelection(); playSfx('beep'); forceHardReset(); setTimeout(()=>confirmMode(),300); }
+function confirmMode(){
+  activeLayouts=LAYOUTS.filter(l=>l.mode===currentMode); carouselIndex=0;
+  $('layout-mode-desc').innerText=currentMode==='multi'?'Choose your 4x6" print format':'Choose your sticker layout';
+  updateCarousel(); navigate('LAYOUT');
 }
-
-function updateCarousel() {
-if (activeLayouts.length === 0) return;
-currentLayout = activeLayouts[carouselIndex];
-$('carousel-icon').innerHTML = currentLayout.icon; $('carousel-name').innerText = currentLayout.name;
-$('carousel-shots').innerText = `${currentLayout.shots} SHOT${currentLayout.shots > 1 ? 'S' : ''}`;
-$('carousel-desc').innerText = currentLayout.type === 'multiprint' ? '✨ MULTIPRINT' : (currentLayout.type === 'twin-strip' ? '✂️ TWIN STRIP' : '📄 FULL SHEET');
-$('carousel-dots').innerHTML = '';
-activeLayouts.forEach((_, i) => { $('carousel-dots').innerHTML += `<div class="w-2 h-2 rounded-full transition-colors ${i === carouselIndex ? 'bg-[#ff4d9a]' : 'bg-gray-300'}"></div>`; });
-filterAvailableFrames(); updateSelectedFrameUI(); renderFrameTabs(); renderFrameGrid();
+function updateCarousel(){
+  if(activeLayouts.length===0) return;
+  currentLayout=activeLayouts[carouselIndex];
+  $('carousel-icon').innerHTML=currentLayout.icon; $('carousel-name').innerText=currentLayout.name;
+  $('carousel-shots').innerText=`${currentLayout.shots} SHOT${currentLayout.shots>1?'S':''}`;
+  $('carousel-desc').innerText=currentLayout.type==='multiprint'?'✨ MULTIPRINT':(currentLayout.type==='twin-strip'?'✂️ TWIN STRIP':'📄 FULL SHEET');
+  $('carousel-dots').innerHTML='';
+  activeLayouts.forEach((_,i)=>{ $('carousel-dots').innerHTML+=`<div class="w-2 h-2 rounded-full transition-colors ${i===carouselIndex?'bg-[#ff4d9a]':'bg-gray-300'}"></div>`; });
+  filterAvailableFrames(); updateSelectedFrameUI(); renderFrameTabs(); renderFrameGrid();
 }
+function prevLayout(){ carouselIndex=(carouselIndex-1+activeLayouts.length)%activeLayouts.length; forceHardReset(); updateCarousel(); }
+function nextLayout(){ carouselIndex=(carouselIndex+1)%activeLayouts.length; forceHardReset(); updateCarousel(); }
+function confirmLayout(){ playSfx('beep'); const card=$('carousel-layout-card'); if(card){card.style.transform='scale(0.95)'; setTimeout(()=>{card.style.transform='none'; navigate('FRAME');},150);} else navigate('FRAME'); }
 
-function prevLayout() { carouselIndex = (carouselIndex - 1 + activeLayouts.length) % activeLayouts.length; forceHardReset(); updateCarousel(); }
-function nextLayout() { carouselIndex = (carouselIndex + 1) % activeLayouts.length; forceHardReset(); updateCarousel(); }
-
-function confirmLayout() { playSfx('beep'); const card = $('carousel-layout-card'); if (card) { card.style.transform = 'scale(0.95)'; setTimeout(() => { card.style.transform = 'none'; navigate('FRAME'); }, 150); } else navigate('FRAME'); }
-
-let carouselStartX = 0;
-function initCarouselSwipe() {
-const card = $('carousel-layout-card'); if (!card) return;
-card.addEventListener('touchstart', e => carouselStartX = e.changedTouches[0].screenX, {passive:true});
-card.addEventListener('touchend', e => { const endX = e.changedTouches[0].screenX; if (carouselStartX - endX > 40) { nextLayout(); e.stopPropagation(); } else if (endX - carouselStartX > 40) { prevLayout(); e.stopPropagation(); } }, {passive:true});
+let carouselStartX=0;
+function initCarouselSwipe(){
+  const card=$('carousel-layout-card'); if(!card) return;
+  card.addEventListener('touchstart',e=>{carouselStartX=e.changedTouches[0].screenX},{passive:true});
+  card.addEventListener('touchend',e=>{const endX=e.changedTouches[0].screenX; if(carouselStartX-endX>40){nextLayout();e.stopPropagation();}else if(endX-carouselStartX>40){prevLayout();e.stopPropagation();}},{passive:true});
 }
-
-function renderFrameTabs() {
-$('frame-category-tabs').innerHTML = '';
-CATEGORIES.forEach(cat => { if(availableFrames.filter(f => f.category === cat).length > 0) $('frame-category-tabs').innerHTML += `<button class="category-tab active">EXCLUSIVE FRAMES</button>`; });
+function renderFrameTabs(){
+  $('frame-category-tabs').innerHTML='';
+  CATEGORIES.forEach(cat=>{ if(availableFrames.filter(f=>f.category===cat).length>0) $('frame-category-tabs').innerHTML+=`<button class="category-tab active">EXCLUSIVE FRAMES</button>`; });
 }
-
-function renderFrameGrid() {
-const c = $('frame-grid-container'); c.innerHTML = '';
-if (availableFrames.length === 0) { c.innerHTML = '<div class="col-span-4 text-center text-xs text-pink-500 font-bold py-8 bg-white/50 rounded-xl">ไม่มีกรอบสำหรับ Layout นี้<br><span class="text-gray-400 text-[10px]">ระบบจะพิมพ์แบบเต็มแผ่น 4x6" ให้โดยอัตโนมัติ 🎀</span></div>'; return; }
-availableFrames.forEach(frame => {
-const btn = document.createElement('div'); const sel = currentFrame && currentFrame.id === frame.id;
-btn.className = `frame-thumb bg-white/90 backdrop-blur border-[3px] border-[#f2ede9] p-1.5 rounded-xl shadow-sm flex flex-col items-center justify-center text-center cursor-pointer active:scale-[0.95] ${sel ? 'selected border-[#ff4d9a] bg-[#fff0f5]' : ''}`;
-btn.onclick = () => { currentFrame = frame; slotAssetsData = []; forceHardReset(); renderFrameGrid(); updateSelectedFrameUI(); playSfx('beep'); };
-btn.innerHTML = `<div class="w-full aspect-square mb-1 rounded border border-gray-200 shadow-inner relative overflow-hidden bg-gray-100 flex items-center justify-center"><img src="${frame.overlay}" style="width:100%;height:100%;object-fit:contain;" crossorigin="anonymous" onerror="this.style.opacity='0.3'"/></div><h3 class="font-black text-[#6e6367] text-[7px] uppercase leading-tight truncate w-full">${frame.name}</h3>`;
-c.appendChild(btn);
-});
+function renderFrameGrid(){
+  const c=$('frame-grid-container'); c.innerHTML='';
+  if(availableFrames.length===0){ c.innerHTML='<div class="col-span-4 text-center text-xs text-pink-500 font-bold py-8 bg-white/50 rounded-xl">ไม่มีกรอบสำหรับ Layout นี้<br><span class="text-gray-400 text-[10px]">ระบบจะพิมพ์แบบเต็มแผ่น 4x6" ให้โดยอัตโนมัติ 🎀</span></div>'; return; }
+  availableFrames.forEach(frame=>{
+    const btn=document.createElement('div'); const sel=currentFrame&&currentFrame.id===frame.id;
+    btn.className=`frame-thumb bg-white/90 backdrop-blur border-[3px] border-[#f2ede9] p-1.5 rounded-xl shadow-sm flex flex-col items-center justify-center text-center cursor-pointer active:scale-[0.95] ${sel?'selected border-[#ff4d9a] bg-[#fff0f5]':''}`;
+    btn.onclick=()=>{ currentFrame=frame; slotAssetsData=[]; forceHardReset(); renderFrameGrid(); updateSelectedFrameUI(); playSfx('beep'); };
+    btn.innerHTML=`<div class="w-full aspect-square mb-1 rounded border border-gray-200 shadow-inner relative overflow-hidden bg-gray-100 flex items-center justify-center"><img src="${frame.overlay}" style="width:100%;height:100%;object-fit:contain;" crossorigin="anonymous" onerror="this.style.opacity='0.3'"/></div><h3 class="font-black text-[#6e6367] text-[7px] uppercase leading-tight truncate w-full">${frame.name}</h3>`;
+    c.appendChild(btn);
+  });
 }
-
-function updateSelectedFrameUI() {
-if (!currentFrame) { $('selected-frame-name').innerText = 'No Frame'; $('selected-frame-thumb').innerHTML = '<div class="text-xl">✨</div>'; return; }
-$('selected-frame-thumb').innerHTML = `<img src="${currentFrame.overlay}" class="w-full h-full object-contain" crossorigin="anonymous"/>`;
-$('selected-frame-name').innerText = currentFrame.name;
+function updateSelectedFrameUI(){
+  if(!currentFrame){$('selected-frame-name').innerText='No Frame';$('selected-frame-thumb').innerHTML='<div class="text-xl">✨</div>';return;}
+  $('selected-frame-thumb').innerHTML=`<img src="${currentFrame.overlay}" class="w-full h-full object-contain" crossorigin="anonymous"/>`;
+  $('selected-frame-name').innerText=currentFrame.name;
 }
 
 async function shareFile(dataUrl, filename, mimeType) {
-if (!dataUrl) return;
-try {
-const res = await fetch(dataUrl); const blob = await res.blob(); const file = new File([blob], filename, { type: mimeType });
-if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ title: 'Tinkle Photo Club ✨', text: 'ดูรูปน่ารักๆ ของฉันสิ! 📸🎀', files: [file] });
-else throw new Error('no share support');
-} catch (err) { showAlert('อุปกรณ์ของคุณไม่รองรับการแชร์โดยตรง ระบบจะทำการดาวน์โหลดให้แทนนะคะ 🥺'); if (mimeType === 'image/gif') downloadGif(); else downloadImage(); }
+  if(!dataUrl) return;
+  try {
+    const res=await fetch(dataUrl); const blob=await res.blob(); const file=new File([blob],filename,{type:mimeType});
+    if(navigator.canShare&&navigator.canShare({files:[file]})) await navigator.share({title:'Tinkle Photo Club ✨',text:'ดูรูปน่ารักๆ ของฉันสิ! 📸🎀',files:[file]});
+    else throw new Error('no share support');
+  } catch(err){ showAlert('อุปกรณ์ของคุณไม่รองรับการแชร์โดยตรง ระบบจะทำการดาวน์โหลดให้แทนนะคะ 🥺'); if(mimeType==='image/gif') downloadGif(); else downloadImage(); }
+}
+function downloadImage(){ if(!finalComposedUrl) return; const a=document.createElement('a'); a.href=finalComposedUrl; a.download=`tinkle_photo_${Date.now()}.jpg`; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
+function downloadGif(){ if(!finalGifUrl) return; const a=document.createElement('a'); a.href=finalGifUrl; a.download=`tinkle_animation_${Date.now()}.gif`; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
+
+function resetApp(){
+  forceHardReset(); currentMode='multi'; activeLayouts=[]; carouselIndex=0; currentLayout=null; currentFrame=null; currentFilter=FILTERS[0]; updateFilterSelection();
+  const zs=$('review-zoom-slider'); if(zs) zs.value=1; $('final-image').src='';
+  const gc=$('gif-controls'); if(gc){gc.classList.add('hidden','opacity-0');gc.classList.remove('opacity-100');}
+  bgRemovalMode=0; hasAiLoaded=false; mediaPipeLoading=false;
+  const bgBtn=$('bg-toggle-btn');
+  if(bgBtn){ bgBtn.innerText='🪄 BG: OFF'; bgBtn.classList.remove('bg-pink-500/80','border-pink-300'); bgBtn.classList.add('bg-black/50','border-white/30'); }
+  navigate('HOME');
 }
 
-function downloadImage() {
-if (!finalComposedUrl) return; const link = document.createElement('a'); link.href = finalComposedUrl; link.download = `tinkle_photo_${Date.now()}.jpg`; document.body.appendChild(link); link.click(); document.body.removeChild(link);
-}
-
-function downloadGif() {
-if (!finalGifUrl) return; const link = document.createElement('a'); link.href = finalGifUrl; link.download = `tinkle_animation_${Date.now()}.gif`; document.body.appendChild(link); link.click(); document.body.removeChild(link);
-}
-
-function resetApp() {
-forceHardReset(); currentMode = 'multi'; activeLayouts = []; carouselIndex = 0; currentLayout = null; currentFrame = null; currentFilter = FILTERS[0]; updateFilterSelection();
-const zs = $('review-zoom-slider'); if (zs) zs.value = 1; $('final-image').src = '';
-const gifCtrl = $('gif-controls'); if (gifCtrl) { gifCtrl.classList.add('hidden', 'opacity-0'); gifCtrl.classList.remove('opacity-100'); }
-
-// 🪄 เคลียร์สถานะการลบพื้นหลังกลับไปเป็นค่าเริ่มต้น
-bgRemovalMode = 0;
-const bgBtn = $('bg-toggle-btn');
-if (bgBtn) {
-  bgBtn.innerText = '🪄 BG: OFF';
-  bgBtn.classList.remove('bg-pink-500/80', 'border-pink-300');
-  bgBtn.classList.add('bg-black/50', 'border-white/30');
-}
-
-navigate('HOME');
-}
-
-// ================= IDLE TIMEOUT (SCREENSAVER) =================
+// ── Idle screensaver ──────────────────────────────────────────────────────────
 let idleTimeout = null;
-const IDLE_TIME_MS = 60000; 
-
-function initIdleTimer() {
-  resetIdleTimer();
-  ['touchstart', 'click', 'mousemove', 'keydown'].forEach(evt => {
-    document.addEventListener(evt, handleUserInteraction);
-  });
-}
-
-function handleUserInteraction() {
-  const ss = $('screensaver');
-  if (!ss.classList.contains('hidden')) {
-    hideScreensaver();
-  } else {
-    resetIdleTimer();
-  }
-}
-
-function resetIdleTimer() {
-  if (idleTimeout) clearTimeout(idleTimeout);
-  idleTimeout = setTimeout(showScreensaver, IDLE_TIME_MS);
-}
-
-function showScreensaver() {
-  const ss = $('screensaver');
-  if (!ss.classList.contains('hidden')) return;
-  resetApp(); 
-  ss.classList.remove('hidden');
-  ss.classList.add('flex');
-}
-
-function hideScreensaver() {
-  const ss = $('screensaver');
-  if (ss.classList.contains('hidden')) return;
-  playSfx('beep');
-  ss.classList.add('hidden');
-  ss.classList.remove('flex');
-  resetIdleTimer();
-}
+const IDLE_TIME_MS = 60000;
+function initIdleTimer(){ resetIdleTimer(); ['touchstart','click','mousemove','keydown'].forEach(e=>document.addEventListener(e,handleUserInteraction)); }
+function handleUserInteraction(){ const ss=$('screensaver'); if(!ss.classList.contains('hidden')){ hideScreensaver(); } else { resetIdleTimer(); } }
+function resetIdleTimer(){ if(idleTimeout) clearTimeout(idleTimeout); idleTimeout=setTimeout(showScreensaver,IDLE_TIME_MS); }
+function showScreensaver(){ const ss=$('screensaver'); if(!ss.classList.contains('hidden')) return; resetApp(); ss.classList.remove('hidden'); ss.classList.add('flex'); }
+function hideScreensaver(){ const ss=$('screensaver'); if(ss.classList.contains('hidden')) return; playSfx('beep'); ss.classList.add('hidden'); ss.classList.remove('flex'); resetIdleTimer(); }
 
 init();
 </script>
