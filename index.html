@@ -125,12 +125,15 @@ border-radius: 16px;
 width: 100%;
 }
 #preview-canvas {
-display: block;
+display: none;
 width: 100%;
 height: 100%;
 }
 #camera-video {
-display: none;
+display: block;
+width: 100%;
+height: 100%;
+object-fit: cover;
 }
 .review-photo-container {
 position: relative;
@@ -308,6 +311,7 @@ overflow: hidden;
 <button id="bg-toggle-btn" onclick="event.stopPropagation(); toggleBgRemoval();" class="absolute bottom-2 right-2 z-40 h-8 px-2 bg-black/50 backdrop-blur rounded-full flex items-center justify-center text-white active:scale-95 border border-white/30 font-black text-[10px] shadow-md transition-colors pointer-events-auto">
   🪄 BG: OFF
 </button>
+<span id="bg-debug" class="absolute bottom-12 right-2 z-40 text-[8px] text-yellow-300 font-mono bg-black/70 px-2 py-0.5 rounded hidden pointer-events-none"></span>
 
 <div id="tap-to-shoot-hint" class="absolute inset-0 flex items-center justify-center z-20 pointer-events-none opacity-60">
 <div class="bg-black/50 backdrop-blur-sm px-4 py-2 rounded-full border border-white/40 text-white font-black text-[12px] animate-pulse">👆 TAP TO SHOOT 👆</div>
@@ -876,62 +880,85 @@ async function toggleBgRemoval() {
   playSfx('beep');
   bgRemovalMode = (bgRemovalMode + 1) % BG_NAMES.length;
   updateBgBtnUI();
+  const dbg = $('bg-debug');
+
   if (bgRemovalMode === 0) {
     if (aiHealthTimeout) { clearTimeout(aiHealthTimeout); aiHealthTimeout = null; }
+    if (dbg) { dbg.classList.add('hidden'); dbg.innerText = ''; }
+    switchToVideoMode();
     return;
   }
+
   if (mediaPipeLoading) return;
+
   if (!hasAiLoaded) {
     mediaPipeLoading = true;
     updateBgBtnUI();
+    if (dbg) { dbg.classList.remove('hidden'); dbg.innerText = '⏳ Loading AI...'; }
     const ok = await initSegmenter();
     mediaPipeLoading = false;
-    if (!ok) { bgRemovalMode = 0; updateBgBtnUI(); return; }
+    if (!ok) {
+      bgRemovalMode = 0; updateBgBtnUI();
+      if (dbg) { dbg.innerText = '❌ AI load failed'; }
+      return;
+    }
     hasAiLoaded = true;
     updateBgBtnUI();
+    if (dbg) dbg.innerText = '✅ AI ready, processing...';
   }
+
   if (!aiLoopRunning) {
     hasAiResult = false; aiLoopRunning = true;
     aiLoop();
     if (aiHealthTimeout) clearTimeout(aiHealthTimeout);
     aiHealthTimeout = setTimeout(() => {
       if (bgRemovalMode !== 0 && !hasAiResult) {
-        console.warn('[AI] No results after 10s');
+        console.warn('[AI] No results after 12s');
         bgRemovalMode = 0; aiLoopRunning = false; updateBgBtnUI();
-        showAlert('ระบบลบพื้นหลังไม่ตอบสนอง กรุณาลองใหม่ค่ะ 🥺');
+        if (dbg) dbg.innerText = '❌ AI timeout (no results)';
+        switchToVideoMode();
+        showAlert('ระบบลบพื้นหลังไม่ตอบสนอง กรุณาลองใหม่ค่ะ 🥺\n\nType: ' + (segmenterType || 'none'));
       }
-    }, 10000);
+    }, 12000);
   }
+}
+
+function bgDebug(msg) {
+  const dbg = $('bg-debug');
+  if (dbg) { dbg.classList.remove('hidden'); dbg.innerText = msg; }
+  console.log('[AI]', msg);
 }
 
 async function initSegmenter() {
   // ── Attempt 1: New Tasks Vision API ──────────────────────────────────────
   try {
-    console.log('[AI] Trying Tasks Vision API...');
+    bgDebug('1/4 Loading Tasks Vision JS...');
     const module = await import(
       'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs'
     );
+    bgDebug('2/4 Loading WASM runtime...');
     const vision = await module.FilesetResolver.forVisionTasks(
       'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
     );
+    bgDebug('3/4 Loading selfie model...');
     tasksSegmenter = await module.ImageSegmenter.createFromOptions(vision, {
       baseOptions: {
         modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite',
-        delegate: 'GPU',
       },
       outputCategoryMask: true,
       runningMode: 'VIDEO',
     });
     segmenterType = 'tasks';
-    console.log('[AI] Tasks Vision API ready ✅');
+    bgDebug('4/4 Tasks Vision ready ✅');
     return true;
   } catch(e) {
+    bgDebug('Tasks failed: ' + (e.message || e).toString().slice(0, 60));
     console.warn('[AI] Tasks Vision failed:', e);
   }
 
   // ── Attempt 2: Legacy SelfieSegmentation API ────────────────────────────
   try {
-    console.log('[AI] Trying Legacy SelfieSegmentation...');
+    bgDebug('Fallback: Loading legacy API...');
     if (typeof SelfieSegmentation === 'undefined') {
       await new Promise((resolve, reject) => {
         const s = document.createElement('script');
@@ -942,7 +969,8 @@ async function initSegmenter() {
       });
       await new Promise(r => setTimeout(r, 200));
     }
-    if (typeof SelfieSegmentation === 'undefined') throw new Error('SelfieSegmentation not found');
+    if (typeof SelfieSegmentation === 'undefined') throw new Error('Not found');
+    bgDebug('Fallback: Initializing model...');
     legacySegmenter = new SelfieSegmentation({
       locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${f}`
     });
@@ -950,13 +978,14 @@ async function initSegmenter() {
     legacySegmenter.onResults(onLegacyResults);
     await legacySegmenter.initialize();
     segmenterType = 'legacy';
-    console.log('[AI] Legacy API ready ✅');
+    bgDebug('Legacy API ready ✅');
     return true;
   } catch(e) {
+    bgDebug('Legacy failed: ' + (e.message || e).toString().slice(0, 60));
     console.warn('[AI] Legacy also failed:', e);
   }
 
-  showAlert('ไม่สามารถเปิดระบบลบพื้นหลังได้ค่ะ อุปกรณ์หรือเบราว์เซอร์อาจไม่รองรับ 🥺');
+  showAlert('ไม่สามารถเปิดระบบลบพื้นหลังได้ค่ะ 🥺\n\nกรุณาตรวจสอบอินเทอร์เน็ตและลองใหม่');
   return false;
 }
 
@@ -1045,6 +1074,8 @@ function onLegacyResults(results) {
   if (!hasAiResult) {
     hasAiResult = true;
     if (aiHealthTimeout) { clearTimeout(aiHealthTimeout); aiHealthTimeout = null; }
+    bgDebug('🎬 BG active (legacy)');
+    switchToBgCanvasMode();
   }
 }
 
@@ -1071,6 +1102,8 @@ function aiLoop() {
         if (!hasAiResult) {
           hasAiResult = true;
           if (aiHealthTimeout) { clearTimeout(aiHealthTimeout); aiHealthTimeout = null; }
+          bgDebug('🎬 BG active (tasks)');
+          switchToBgCanvasMode();
         }
       } catch(e) { console.error('[Tasks] segmentForVideo:', e); }
       aiSendBusy = false;
@@ -1095,8 +1128,11 @@ function aiLoop() {
 }
 
 // ── Camera ────────────────────────────────────────────────────────────────────
+// ARCHITECTURE: <video> element shown DIRECTLY. No canvas loop by default.
+// Canvas only activates when BG removal is ON.
+// This means ZERO continuous CPU/GPU work during normal camera preview.
+
 async function startCamera() {
-  // ★ Stop any existing preview loop FIRST (critical for toggleCamera)
   previewLoopRunning = false;
   if (previewRAF) { cancelAnimationFrame(previewRAF); previewRAF = null; }
   if (stream) stream.getTracks().forEach(t => t.stop());
@@ -1106,8 +1142,10 @@ async function startCamera() {
   $('tap-to-shoot-hint').classList.remove('hidden');
   $('timer-toggle-btn').innerText = `⏱️ ${cameraTimer}S`;
 
+  const vid    = $('camera-video');
+  const canvas = $('preview-canvas');
+
   try {
-    // ★ Step 1: Open camera FIRST — user sees video immediately
     stream = await navigator.mediaDevices.getUserMedia({
       video: {
         facingMode: isFacingUser ? 'user' : 'environment',
@@ -1116,21 +1154,112 @@ async function startCamera() {
       },
       audio: false
     });
-    const vid = $('camera-video');
     vid.srcObject = stream;
-    await new Promise(res => { if (vid.readyState >= 2) res(); else vid.onloadeddata = res; });
+    // Explicit play() needed on older iOS Safari
+    try { await vid.play(); } catch(e) {}
+    await new Promise(res => {
+      if (vid.readyState >= 2) res();
+      else { vid.onloadeddata = res; setTimeout(res, 3000); } // 3s timeout fallback
+    });
 
-    // ★ Step 2: Start preview loop immediately (shows raw video while assets load)
-    startPreviewLoop();
+    // Set aspect ratio on viewport
+    const container = $('camera-viewport');
+    const slotIdx = Math.min(capturedPhotos.length, (currentLayout ? currentLayout.shots - 1 : 0));
+    const slot = currentLayout ? currentLayout.slots[slotIdx] : null;
+    if (container && slot) container.style.aspectRatio = `${slot.w}/${slot.h}`;
 
-    // ★ Step 3: Extract layout assets IN BACKGROUND (non-blocking)
-    // Preview loop gracefully handles missing assets (shows video feed)
+    // ★ Apply CSS filter + mirror directly on <video> (GPU-accelerated, zero CPU)
+    let cssFilter = currentFilter.css;
+    if (cssFilter === 'popart') cssFilter = 'hue-rotate(90deg) saturate(1.8) contrast(1.1)';
+    vid.style.filter = (cssFilter && cssFilter !== 'none') ? cssFilter : '';
+    vid.style.transform = isFacingUser ? 'scaleX(-1)' : '';
+
+    // ★ Default: show video directly, hide canvas
+    vid.style.display = 'block';
+    canvas.style.display = 'none';
+
+    // If BG removal is active, switch to canvas mode
+    if (bgRemovalMode !== 0 && hasAiResult) {
+      switchToBgCanvasMode();
+    }
+
+    // Extract layout assets in background
     if (slotAssetsData.length === 0) {
       extractLayoutAssets().catch(e => console.warn('[Tinkle] extractLayoutAssets:', e));
     }
   } catch(e) {
     showAlert('Please allow camera access 🥺');
   }
+}
+
+// Switch display: video hidden → canvas shown, start BG preview loop
+function switchToBgCanvasMode() {
+  const vid    = $('camera-video');
+  const canvas = $('preview-canvas');
+  vid.style.display = 'none';
+  canvas.style.display = 'block';
+  if (!previewLoopRunning) startBgPreviewLoop();
+}
+
+// Switch display: canvas hidden → video shown, stop BG preview loop
+function switchToVideoMode() {
+  const vid    = $('camera-video');
+  const canvas = $('preview-canvas');
+  canvas.style.display = 'none';
+  vid.style.display = 'block';
+  previewLoopRunning = false;
+  if (previewRAF) { cancelAnimationFrame(previewRAF); previewRAF = null; }
+  // Re-apply CSS filter on video
+  let cssFilter = currentFilter.css;
+  if (cssFilter === 'popart') cssFilter = 'hue-rotate(90deg) saturate(1.8) contrast(1.1)';
+  vid.style.filter = (cssFilter && cssFilter !== 'none') ? cssFilter : '';
+  vid.style.transform = isFacingUser ? 'scaleX(-1)' : '';
+}
+
+// Canvas loop ONLY for BG removal — draws lastProcessedCanvas to preview-canvas
+function startBgPreviewLoop() {
+  if (previewLoopRunning) return;
+  previewLoopRunning = true;
+
+  const vid    = $('camera-video');
+  const canvas = $('preview-canvas');
+  if (!vid || !canvas) { previewLoopRunning = false; return; }
+  const ctx = canvas.getContext('2d');
+
+  function drawBgFrame(now) {
+    if (!previewLoopRunning) return;
+    if (now - lastPreviewFrameMs < PREVIEW_FRAME_MS) {
+      previewRAF = requestAnimationFrame(drawBgFrame); return;
+    }
+    lastPreviewFrameMs = now;
+
+    if (bgRemovalMode === 0 || !hasAiResult) {
+      // BG turned off mid-loop → switch back to video
+      switchToVideoMode(); return;
+    }
+
+    const container = $('camera-viewport');
+    const cW = container ? container.clientWidth : 300;
+    const cH = container ? container.clientHeight : 400;
+    if (canvas.width !== cW || canvas.height !== cH) { canvas.width = cW; canvas.height = cH; }
+
+    if (lastProcessedCanvas.width > 0) {
+      ctx.clearRect(0, 0, cW, cH);
+      // Cover-fit the AI-processed image
+      const srcW = lastProcessedCanvas.width, srcH = lastProcessedCanvas.height;
+      const srcR = srcW/srcH, outR = cW/cH;
+      let dW, dH;
+      if (srcR > outR) { dH = cH; dW = dH * srcR; } else { dW = cW; dH = dW / srcR; }
+      ctx.save();
+      ctx.translate(cW/2, cH/2);
+      if (isFacingUser) ctx.scale(-1, 1);
+      ctx.drawImage(lastProcessedCanvas, -dW/2, -dH/2, dW, dH);
+      ctx.restore();
+    }
+
+    previewRAF = requestAnimationFrame(drawBgFrame);
+  }
+  previewRAF = requestAnimationFrame(drawBgFrame);
 }
 
 function toggleCamera() { isFacingUser = !isFacingUser; startCamera(); }
@@ -1141,112 +1270,6 @@ function toggleTimer() {
   else if (cameraTimer === 5) cameraTimer = 10;
   else cameraTimer = 3;
   $('timer-toggle-btn').innerText = `⏱️ ${cameraTimer}S`;
-}
-
-// ── Preview loop ──────────────────────────────────────────────────────────────
-// TIER 1 (iPhone 6s): SIMPLE MODE
-//   • 1× drawImage only (no ctx.filter, no mask compositing, no scratch canvas)
-//   • CSS filter on <canvas> element (GPU-accelerated on Safari)
-//   • Mask/overlay skipped during preview (shown at capture & export)
-//   → Reduces per-frame work from ~14 operations to 1
-//
-// TIER 2-3 (iPhone 8+): FULL MODE
-//   • Full renderOneSlot with filters/masks/overlays
-
-function startPreviewLoop() {
-  if (previewLoopRunning) return;
-  previewLoopRunning = true;
-  if (previewRAF) cancelAnimationFrame(previewRAF);
-
-  const vid    = $('camera-video');
-  const canvas = $('preview-canvas');
-  if (!vid || !canvas) { previewLoopRunning = false; return; }
-
-  const canvasCtx = canvas.getContext('2d');
-
-  // Tier 2-3 needs scratch canvas for compositing
-  if (DEVICE.tier >= 2 && !previewScratchCanvas) {
-    previewScratchCanvas = document.createElement('canvas');
-    previewScratchCtx    = previewScratchCanvas.getContext('2d');
-  }
-
-  // Tier 1: apply CSS filter to canvas element (GPU-accelerated)
-  // instead of ctx.filter (software-rendered on A9 Safari)
-  if (DEVICE.tier === 1) {
-    let cssFilter = currentFilter.css;
-    if (cssFilter === 'popart') cssFilter = 'hue-rotate(90deg) saturate(1.8) contrast(1.1)';
-    canvas.style.filter = (cssFilter && cssFilter !== 'none') ? cssFilter : '';
-  } else {
-    canvas.style.filter = '';
-  }
-
-  function drawFrame(now) {
-    if (!previewLoopRunning) return;
-
-    if (now - lastPreviewFrameMs < PREVIEW_FRAME_MS) {
-      previewRAF = requestAnimationFrame(drawFrame);
-      return;
-    }
-    lastPreviewFrameMs = now;
-
-    if (!vid.srcObject || vid.readyState < 2) {
-      previewRAF = requestAnimationFrame(drawFrame);
-      return;
-    }
-
-    const slotIdx = retakeTargetIndex !== -1 ? retakeTargetIndex : Math.min(capturedPhotos.length, currentLayout.shots - 1);
-    const slot    = currentLayout.slots[slotIdx];
-    const assets  = slotAssetsData[slotIdx];
-    if (!slot || !assets || !assets.region) {
-      previewRAF = requestAnimationFrame(drawFrame);
-      return;
-    }
-
-    const region    = assets.region;
-    const container = $('camera-viewport');
-    const screenW   = container ? container.clientWidth : 300;
-    const cW = screenW;
-    const cH = Math.round(region.h * (screenW / region.w));
-
-    if (container) container.style.aspectRatio = `${region.w}/${region.h}`;
-    if (canvas.width !== cW || canvas.height !== cH) {
-      canvas.width = cW; canvas.height = cH;
-    }
-
-    const hasBgResult = (bgRemovalMode !== 0 && hasAiResult && lastProcessedCanvas.width > 0);
-    const sourceImage = hasBgResult ? lastProcessedCanvas : vid;
-
-    // ── TIER 1: SIMPLE MODE (1 drawImage, no ctx.filter, no compositing) ──
-    if (DEVICE.tier === 1) {
-      canvasCtx.save();
-      // Cover-fit the source into the canvas area
-      const srcW = sourceImage.videoWidth || sourceImage.width || cW;
-      const srcH = sourceImage.videoHeight || sourceImage.height || cH;
-      const srcR = srcW / srcH, outR = cW / cH;
-      let dW, dH;
-      if (srcR > outR) { dH = cH; dW = dH * srcR; }
-      else             { dW = cW; dH = dW / srcR; }
-      canvasCtx.translate(cW / 2, cH / 2);
-      if (sourceImage === vid && isFacingUser) canvasCtx.scale(-1, 1);
-      canvasCtx.drawImage(sourceImage, -dW / 2, -dH / 2, dW, dH);
-      canvasCtx.restore();
-    }
-
-    // ── TIER 2-3: FULL MODE (renderOneSlot with masks/filters/overlays) ──
-    else {
-      if (previewScratchCanvas.width !== cW || previewScratchCanvas.height !== cH) {
-        previewScratchCanvas.width = cW;
-        previewScratchCanvas.height = cH;
-      }
-      renderOneSlot(previewScratchCtx, cW, cH, sourceImage, true, assets.maskImg, assets.overlayImg, null, currentFilter.css, slotIdx);
-      canvasCtx.clearRect(0, 0, cW, cH);
-      canvasCtx.drawImage(previewScratchCanvas, 0, 0);
-    }
-
-    previewRAF = requestAnimationFrame(drawFrame);
-  }
-
-  previewRAF = requestAnimationFrame(drawFrame);
 }
 
 function updateCameraUI() {
