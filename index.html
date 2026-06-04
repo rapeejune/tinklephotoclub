@@ -492,14 +492,21 @@ const PREVIEW_FRAME_MS = 1000 / DEVICE.previewFps;
 let shootInterval = null;
 let cameraTimer   = 5;
 
-// ── AI BG removal — lazy-loaded only when user requests ───────────────────────
-let bgRemovalMode     = 0;
-const BG_NAMES        = ['OFF', 'PINK', 'GRID', 'CLOUDS', 'HOLO'];
-let selfieSegmentation = null;
+// ── AI BG removal — uses NEW MediaPipe Tasks Vision API (maintained, iOS 18 compatible) ──
+let bgRemovalMode      = 0;
+const BG_NAMES         = ['OFF', 'PINK', 'GRID', 'CLOUDS', 'HOLO'];
+let segmenterType      = null;  // 'tasks' (new API) or 'legacy' (old API)
+let tasksSegmenter     = null;  // ImageSegmenter from @mediapipe/tasks-vision
+let legacySegmenter    = null;  // SelfieSegmentation from @mediapipe/selfie_segmentation
 let aiLoopRunning      = false;
 let hasAiLoaded        = false;
+let hasAiResult        = false;
 let mediaPipeLoading   = false;
+let aiHealthTimeout    = null;
+let aiSendBusy         = false;
 let lastProcessedCanvas = document.createElement('canvas');
+let segMaskCanvas      = null;  // scratch canvas for Tasks API mask conversion
+let segMaskCtx         = null;
 
 // BG patterns
 let gridPattern = null;
@@ -565,10 +572,13 @@ function forceHardReset() {
   if (shootInterval) { clearInterval(shootInterval); shootInterval = null; }
   $('countdown-display').classList.add('hidden');
 
-  // ✅ FIX 5: Stop both loops cleanly
+  // Stop both loops cleanly
   previewLoopRunning = false;
   aiLoopRunning      = false;
+  aiSendBusy         = false;
   if (previewRAF) { cancelAnimationFrame(previewRAF); previewRAF = null; }
+  // Clear CSS filter applied by Tier 1 preview
+  const pc = $('preview-canvas'); if (pc) pc.style.filter = '';
 
   capturedPhotos = []; photoTransforms = []; capturedPhotoRatios = [];
   retakeTargetIndex = -1; activePhotoIndex = 0; isShooting = false;
@@ -857,76 +867,97 @@ function goBack(step) {
 }
 
 // ── AI Background Removal ─────────────────────────────────────────────────────
+// Strategy:
+//  1. Try NEW @mediapipe/tasks-vision (ImageSegmenter) — maintained, iOS 18 ✅
+//  2. Fall back to OLD @mediapipe/selfie_segmentation — deprecated but works on older devices
+//  3. If both fail → show error
+
 async function toggleBgRemoval() {
   playSfx('beep');
-
   bgRemovalMode = (bgRemovalMode + 1) % BG_NAMES.length;
   updateBgBtnUI();
-
-  if (bgRemovalMode === 0) return;   // turned off
-  if (mediaPipeLoading) return;      // already initializing
-
-  if (!selfieSegmentation) {
-    // ── Step 1: Load the JS bundle if not yet loaded ──────────────────────────
-    if (typeof SelfieSegmentation === 'undefined') {
-      mediaPipeLoading = true;
-      updateBgBtnUI();
-      try {
-        await new Promise((resolve, reject) => {
-          const s = document.createElement('script');
-          s.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js';
-          s.crossOrigin = 'anonymous';
-          s.onload = resolve; s.onerror = reject;
-          document.head.appendChild(s);
-        });
-      } catch(e) {
-        mediaPipeLoading = false; bgRemovalMode = 0; updateBgBtnUI();
-        showAlert('ไม่สามารถโหลดระบบลบพื้นหลังได้ค่ะ กรุณาตรวจสอบอินเทอร์เน็ต 🥺');
-        return;
-      }
-    }
-
-    if (typeof SelfieSegmentation === 'undefined') {
-      mediaPipeLoading = false; bgRemovalMode = 0; updateBgBtnUI();
-      showAlert('ขออภัยค่ะ อุปกรณ์นี้ไม่รองรับระบบลบพื้นหลัง 🥺');
-      return;
-    }
-
-    // ── Step 2: Construct + configure ────────────────────────────────────────
-    try {
-      selfieSegmentation = new SelfieSegmentation({
-        locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${f}`
-      });
-      // modelSelection 0 = general (lighter), 1 = landscape (heavier but better)
-      // Use lighter model on Tier 1 devices
-      selfieSegmentation.setOptions({ modelSelection: DEVICE.tier === 1 ? 0 : 1 });
-      selfieSegmentation.onResults(onMediaPipeResults);
-    } catch(err) {
-      mediaPipeLoading = false; bgRemovalMode = 0; updateBgBtnUI();
-      showAlert('อุปกรณ์รุ่นนี้ไม่รองรับระบบ AI ค่ะ 🥺');
-      return;
-    }
-
-    // ── Step 3: initialize() — THIS IS THE CRITICAL MISSING STEP ─────────────
-    // Without initialize(), send() silently does nothing on iOS Safari.
-    // We must await it fully before the first send().
-    try {
-      await selfieSegmentation.initialize();
-    } catch(err) {
-      console.warn('[MediaPipe] initialize() failed:', err);
-      // Non-fatal on some browsers — continue anyway
-    }
-
-    hasAiLoaded = true;
+  if (bgRemovalMode === 0) {
+    if (aiHealthTimeout) { clearTimeout(aiHealthTimeout); aiHealthTimeout = null; }
+    return;
+  }
+  if (mediaPipeLoading) return;
+  if (!hasAiLoaded) {
+    mediaPipeLoading = true;
+    updateBgBtnUI();
+    const ok = await initSegmenter();
     mediaPipeLoading = false;
+    if (!ok) { bgRemovalMode = 0; updateBgBtnUI(); return; }
+    hasAiLoaded = true;
     updateBgBtnUI();
   }
-
-  // ── Step 4: Start the send loop ───────────────────────────────────────────
   if (!aiLoopRunning) {
-    aiLoopRunning = true;
+    hasAiResult = false; aiLoopRunning = true;
     aiLoop();
+    if (aiHealthTimeout) clearTimeout(aiHealthTimeout);
+    aiHealthTimeout = setTimeout(() => {
+      if (bgRemovalMode !== 0 && !hasAiResult) {
+        console.warn('[AI] No results after 10s');
+        bgRemovalMode = 0; aiLoopRunning = false; updateBgBtnUI();
+        showAlert('ระบบลบพื้นหลังไม่ตอบสนอง กรุณาลองใหม่ค่ะ 🥺');
+      }
+    }, 10000);
   }
+}
+
+async function initSegmenter() {
+  // ── Attempt 1: New Tasks Vision API ──────────────────────────────────────
+  try {
+    console.log('[AI] Trying Tasks Vision API...');
+    const module = await import(
+      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs'
+    );
+    const vision = await module.FilesetResolver.forVisionTasks(
+      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+    );
+    tasksSegmenter = await module.ImageSegmenter.createFromOptions(vision, {
+      baseOptions: {
+        modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite',
+        delegate: 'GPU',
+      },
+      outputCategoryMask: true,
+      runningMode: 'VIDEO',
+    });
+    segmenterType = 'tasks';
+    console.log('[AI] Tasks Vision API ready ✅');
+    return true;
+  } catch(e) {
+    console.warn('[AI] Tasks Vision failed:', e);
+  }
+
+  // ── Attempt 2: Legacy SelfieSegmentation API ────────────────────────────
+  try {
+    console.log('[AI] Trying Legacy SelfieSegmentation...');
+    if (typeof SelfieSegmentation === 'undefined') {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js';
+        s.crossOrigin = 'anonymous';
+        s.onload = resolve; s.onerror = reject;
+        document.head.appendChild(s);
+      });
+      await new Promise(r => setTimeout(r, 200));
+    }
+    if (typeof SelfieSegmentation === 'undefined') throw new Error('SelfieSegmentation not found');
+    legacySegmenter = new SelfieSegmentation({
+      locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${f}`
+    });
+    legacySegmenter.setOptions({ modelSelection: DEVICE.tier === 1 ? 0 : 1 });
+    legacySegmenter.onResults(onLegacyResults);
+    await legacySegmenter.initialize();
+    segmenterType = 'legacy';
+    console.log('[AI] Legacy API ready ✅');
+    return true;
+  } catch(e) {
+    console.warn('[AI] Legacy also failed:', e);
+  }
+
+  showAlert('ไม่สามารถเปิดระบบลบพื้นหลังได้ค่ะ อุปกรณ์หรือเบราว์เซอร์อาจไม่รองรับ 🥺');
+  return false;
 }
 
 function updateBgBtnUI() {
@@ -942,59 +973,122 @@ function updateBgBtnUI() {
   }
 }
 
-function onMediaPipeResults(results) {
-  const vid = $('camera-video');
-  if (!vid || vid.readyState < 2) return;
-
-  const vw = vid.videoWidth || 640, vh = vid.videoHeight || 480;
-  // Reuse canvas — only resize if dimensions changed (avoids GPU texture realloc every frame)
+// Fill the lastProcessedCanvas with person + styled background
+function compositePersonOnBg(personCanvas, vid, vw, vh) {
   if (lastProcessedCanvas.width !== vw || lastProcessedCanvas.height !== vh) {
     lastProcessedCanvas.width = vw; lastProcessedCanvas.height = vh;
   }
   const ctx = lastProcessedCanvas.getContext('2d');
   ctx.clearRect(0, 0, vw, vh);
-
-  // 1. Draw the segmentation mask (white = person, black = background)
-  ctx.drawImage(results.segmentationMask, 0, 0, vw, vh);
-
-  // 2. Composite person pixels on top (keep only person-shaped pixels)
+  ctx.drawImage(personCanvas, 0, 0, vw, vh);
   ctx.globalCompositeOperation = 'source-in';
   ctx.drawImage(vid, 0, 0, vw, vh);
-
-  // 3. Draw chosen background behind the person
   ctx.globalCompositeOperation = 'destination-over';
   if      (bgRemovalMode === 1) { ctx.fillStyle = '#ffdae0'; }
   else if (bgRemovalMode === 2) { ctx.fillStyle = getGridPattern(ctx) || '#fff0f5'; }
   else if (bgRemovalMode === 3) { ctx.fillStyle = getCloudPattern(ctx) || '#d6e8f9'; }
   else if (bgRemovalMode === 4) {
-    const g = ctx.createLinearGradient(0, 0, vw, vh);
-    g.addColorStop(0, '#ff9a9e'); g.addColorStop(0.5, '#fecfef'); g.addColorStop(1, '#a1c4fd');
+    const g = ctx.createLinearGradient(0,0,vw,vh);
+    g.addColorStop(0,'#ff9a9e'); g.addColorStop(0.5,'#fecfef'); g.addColorStop(1,'#a1c4fd');
     ctx.fillStyle = g;
   }
   if (bgRemovalMode !== 0) ctx.fillRect(0, 0, vw, vh);
   ctx.globalCompositeOperation = 'source-over';
 }
 
-// ── AI loop: interval and input size scale with device tier ───────────────────
-// Tier1=120ms/192px, Tier2=66ms/256px, Tier3=33ms/384px
+// ── New API: process Tasks Vision result ──────────────────────────────────
+function processTasksResult(vid, result) {
+  if (!result || !result.categoryMask) return;
+  const vw = vid.videoWidth || 640, vh = vid.videoHeight || 480;
+
+  // Convert category mask (0=bg, 1=person) → white/transparent canvas
+  const maskData = result.categoryMask.getAsFloat32Array();
+  if (!segMaskCanvas) {
+    segMaskCanvas = document.createElement('canvas');
+    segMaskCtx = segMaskCanvas.getContext('2d');
+  }
+  if (segMaskCanvas.width !== vw || segMaskCanvas.height !== vh) {
+    segMaskCanvas.width = vw; segMaskCanvas.height = vh;
+  }
+  const imgData = segMaskCtx.createImageData(vw, vh);
+  const d = imgData.data;
+  for (let i = 0; i < maskData.length; i++) {
+    const p = i * 4;
+    d[p] = d[p+1] = d[p+2] = 255;
+    d[p+3] = maskData[i] > 0 ? 255 : 0; // person=opaque, bg=transparent
+  }
+  segMaskCtx.putImageData(imgData, 0, 0);
+
+  compositePersonOnBg(segMaskCanvas, vid, vw, vh);
+  result.close(); // release WASM resources
+}
+
+// ── Old API: legacy callback ──────────────────────────────────────────────
+function onLegacyResults(results) {
+  const vid = $('camera-video');
+  if (!vid || vid.readyState < 2) return;
+  const vw = vid.videoWidth || 640, vh = vid.videoHeight || 480;
+
+  // Legacy API gives segmentationMask as a drawable element (canvas/image)
+  if (!segMaskCanvas) {
+    segMaskCanvas = document.createElement('canvas');
+    segMaskCtx = segMaskCanvas.getContext('2d');
+  }
+  if (segMaskCanvas.width !== vw || segMaskCanvas.height !== vh) {
+    segMaskCanvas.width = vw; segMaskCanvas.height = vh;
+  }
+  segMaskCtx.clearRect(0, 0, vw, vh);
+  segMaskCtx.drawImage(results.segmentationMask, 0, 0, vw, vh);
+
+  compositePersonOnBg(segMaskCanvas, vid, vw, vh);
+
+  if (!hasAiResult) {
+    hasAiResult = true;
+    if (aiHealthTimeout) { clearTimeout(aiHealthTimeout); aiHealthTimeout = null; }
+  }
+}
+
+// ── AI loop: routes to correct API ───────────────────────────────────────
 let lastAiTime    = 0;
 let aiInputCanvas = null;
 let aiInputCtx    = null;
 
 function aiLoop() {
-  if (!aiLoopRunning) return;
+  if (!aiLoopRunning || bgRemovalMode === 0) return;
   const vid = $('camera-video');
   const now = performance.now();
 
-  if (bgRemovalMode !== 0 && selfieSegmentation && vid && vid.readyState >= 2 && !vid.paused && (now - lastAiTime > DEVICE.aiIntervalMs)) {
+  if (vid && vid.readyState >= 2 && !vid.paused && !aiSendBusy
+      && (now - lastAiTime > DEVICE.aiIntervalMs)) {
     lastAiTime = now;
-    if (!aiInputCanvas) {
-      aiInputCanvas = document.createElement('canvas');
-      aiInputCanvas.width = aiInputCanvas.height = DEVICE.aiInputSize;
-      aiInputCtx = aiInputCanvas.getContext('2d');
+
+    // ── Tasks Vision API (synchronous) ────────────────────────────────────
+    if (segmenterType === 'tasks' && tasksSegmenter) {
+      aiSendBusy = true;
+      try {
+        const result = tasksSegmenter.segmentForVideo(vid, now);
+        processTasksResult(vid, result);
+        if (!hasAiResult) {
+          hasAiResult = true;
+          if (aiHealthTimeout) { clearTimeout(aiHealthTimeout); aiHealthTimeout = null; }
+        }
+      } catch(e) { console.error('[Tasks] segmentForVideo:', e); }
+      aiSendBusy = false;
     }
-    aiInputCtx.drawImage(vid, 0, 0, DEVICE.aiInputSize, DEVICE.aiInputSize);
-    selfieSegmentation.send({ image: aiInputCanvas }).catch(() => {});
+
+    // ── Legacy API (async callback) ───────────────────────────────────────
+    else if (segmenterType === 'legacy' && legacySegmenter) {
+      if (!aiInputCanvas) {
+        aiInputCanvas = document.createElement('canvas');
+        aiInputCanvas.width = aiInputCanvas.height = DEVICE.aiInputSize;
+        aiInputCtx = aiInputCanvas.getContext('2d');
+      }
+      aiInputCtx.drawImage(vid, 0, 0, DEVICE.aiInputSize, DEVICE.aiInputSize);
+      aiSendBusy = true;
+      legacySegmenter.send({ image: aiInputCanvas })
+        .then(() => { aiSendBusy = false; })
+        .catch(err => { aiSendBusy = false; console.error('[Legacy] send:', err); });
+    }
   }
 
   setTimeout(aiLoop, DEVICE.aiIntervalMs);
@@ -1002,8 +1096,10 @@ function aiLoop() {
 
 // ── Camera ────────────────────────────────────────────────────────────────────
 async function startCamera() {
+  // ★ Stop any existing preview loop FIRST (critical for toggleCamera)
+  previewLoopRunning = false;
+  if (previewRAF) { cancelAnimationFrame(previewRAF); previewRAF = null; }
   if (stream) stream.getTracks().forEach(t => t.stop());
-  if (slotAssetsData.length === 0) await extractLayoutAssets();
 
   updateCameraUI();
   $('camera-filter-badge').innerText = currentFilter.name;
@@ -1011,7 +1107,7 @@ async function startCamera() {
   $('timer-toggle-btn').innerText = `⏱️ ${cameraTimer}S`;
 
   try {
-    // Resolution scales with device tier: Tier1=480p, Tier2=720p, Tier3=1080p
+    // ★ Step 1: Open camera FIRST — user sees video immediately
     stream = await navigator.mediaDevices.getUserMedia({
       video: {
         facingMode: isFacingUser ? 'user' : 'environment',
@@ -1024,7 +1120,14 @@ async function startCamera() {
     vid.srcObject = stream;
     await new Promise(res => { if (vid.readyState >= 2) res(); else vid.onloadeddata = res; });
 
+    // ★ Step 2: Start preview loop immediately (shows raw video while assets load)
     startPreviewLoop();
+
+    // ★ Step 3: Extract layout assets IN BACKGROUND (non-blocking)
+    // Preview loop gracefully handles missing assets (shows video feed)
+    if (slotAssetsData.length === 0) {
+      extractLayoutAssets().catch(e => console.warn('[Tinkle] extractLayoutAssets:', e));
+    }
   } catch(e) {
     showAlert('Please allow camera access 🥺');
   }
@@ -1040,26 +1143,46 @@ function toggleTimer() {
   $('timer-toggle-btn').innerText = `⏱️ ${cameraTimer}S`;
 }
 
-// ✅ FIX 12: Preview loop with FPS limiter + single-instance guard
+// ── Preview loop ──────────────────────────────────────────────────────────────
+// TIER 1 (iPhone 6s): SIMPLE MODE
+//   • 1× drawImage only (no ctx.filter, no mask compositing, no scratch canvas)
+//   • CSS filter on <canvas> element (GPU-accelerated on Safari)
+//   • Mask/overlay skipped during preview (shown at capture & export)
+//   → Reduces per-frame work from ~14 operations to 1
+//
+// TIER 2-3 (iPhone 8+): FULL MODE
+//   • Full renderOneSlot with filters/masks/overlays
+
 function startPreviewLoop() {
-  if (previewLoopRunning) return; // prevent double loop
+  if (previewLoopRunning) return;
   previewLoopRunning = true;
   if (previewRAF) cancelAnimationFrame(previewRAF);
 
-  const vid = $('camera-video');
+  const vid    = $('camera-video');
   const canvas = $('preview-canvas');
   if (!vid || !canvas) { previewLoopRunning = false; return; }
 
-  // Init shared scratch canvas once
-  if (!previewScratchCanvas) {
+  const canvasCtx = canvas.getContext('2d');
+
+  // Tier 2-3 needs scratch canvas for compositing
+  if (DEVICE.tier >= 2 && !previewScratchCanvas) {
     previewScratchCanvas = document.createElement('canvas');
     previewScratchCtx    = previewScratchCanvas.getContext('2d');
+  }
+
+  // Tier 1: apply CSS filter to canvas element (GPU-accelerated)
+  // instead of ctx.filter (software-rendered on A9 Safari)
+  if (DEVICE.tier === 1) {
+    let cssFilter = currentFilter.css;
+    if (cssFilter === 'popart') cssFilter = 'hue-rotate(90deg) saturate(1.8) contrast(1.1)';
+    canvas.style.filter = (cssFilter && cssFilter !== 'none') ? cssFilter : '';
+  } else {
+    canvas.style.filter = '';
   }
 
   function drawFrame(now) {
     if (!previewLoopRunning) return;
 
-    // ✅ FPS throttle — skip frame if too soon
     if (now - lastPreviewFrameMs < PREVIEW_FRAME_MS) {
       previewRAF = requestAnimationFrame(drawFrame);
       return;
@@ -1071,34 +1194,54 @@ function startPreviewLoop() {
       return;
     }
 
-    const slotIdx  = retakeTargetIndex !== -1 ? retakeTargetIndex : Math.min(capturedPhotos.length, currentLayout.shots - 1);
-    const slot     = currentLayout.slots[slotIdx];
-    const assets   = slotAssetsData[slotIdx];
-    if (!slot || !assets) { previewRAF = requestAnimationFrame(drawFrame); return; }
+    const slotIdx = retakeTargetIndex !== -1 ? retakeTargetIndex : Math.min(capturedPhotos.length, currentLayout.shots - 1);
+    const slot    = currentLayout.slots[slotIdx];
+    const assets  = slotAssetsData[slotIdx];
+    if (!slot || !assets || !assets.region) {
+      previewRAF = requestAnimationFrame(drawFrame);
+      return;
+    }
 
-    const region   = assets.region;
-    if (!region) { previewRAF = requestAnimationFrame(drawFrame); return; }
-
+    const region    = assets.region;
     const container = $('camera-viewport');
     const screenW   = container ? container.clientWidth : 300;
     const cW = screenW;
     const cH = Math.round(region.h * (screenW / region.w));
 
     if (container) container.style.aspectRatio = `${region.w}/${region.h}`;
-    if (canvas.width !== cW || canvas.height !== cH) { canvas.width = cW; canvas.height = cH; }
-    if (previewScratchCanvas.width !== cW || previewScratchCanvas.height !== cH) {
-      previewScratchCanvas.width = cW;
-      previewScratchCanvas.height = cH;
+    if (canvas.width !== cW || canvas.height !== cH) {
+      canvas.width = cW; canvas.height = cH;
     }
 
-    // Use AI-processed canvas once MediaPipe has delivered at least one frame
-    const sourceImage = (bgRemovalMode !== 0 && hasAiLoaded && lastProcessedCanvas.width > 0)
-      ? lastProcessedCanvas : vid;
-    renderOneSlot(previewScratchCtx, cW, cH, sourceImage, true, assets.maskImg, assets.overlayImg, null, currentFilter.css, slotIdx);
+    const hasBgResult = (bgRemovalMode !== 0 && hasAiResult && lastProcessedCanvas.width > 0);
+    const sourceImage = hasBgResult ? lastProcessedCanvas : vid;
 
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0,0,cW,cH);
-    ctx.drawImage(previewScratchCanvas, 0, 0);
+    // ── TIER 1: SIMPLE MODE (1 drawImage, no ctx.filter, no compositing) ──
+    if (DEVICE.tier === 1) {
+      canvasCtx.save();
+      // Cover-fit the source into the canvas area
+      const srcW = sourceImage.videoWidth || sourceImage.width || cW;
+      const srcH = sourceImage.videoHeight || sourceImage.height || cH;
+      const srcR = srcW / srcH, outR = cW / cH;
+      let dW, dH;
+      if (srcR > outR) { dH = cH; dW = dH * srcR; }
+      else             { dW = cW; dH = dW / srcR; }
+      canvasCtx.translate(cW / 2, cH / 2);
+      if (sourceImage === vid && isFacingUser) canvasCtx.scale(-1, 1);
+      canvasCtx.drawImage(sourceImage, -dW / 2, -dH / 2, dW, dH);
+      canvasCtx.restore();
+    }
+
+    // ── TIER 2-3: FULL MODE (renderOneSlot with masks/filters/overlays) ──
+    else {
+      if (previewScratchCanvas.width !== cW || previewScratchCanvas.height !== cH) {
+        previewScratchCanvas.width = cW;
+        previewScratchCanvas.height = cH;
+      }
+      renderOneSlot(previewScratchCtx, cW, cH, sourceImage, true, assets.maskImg, assets.overlayImg, null, currentFilter.css, slotIdx);
+      canvasCtx.clearRect(0, 0, cW, cH);
+      canvasCtx.drawImage(previewScratchCanvas, 0, 0);
+    }
 
     previewRAF = requestAnimationFrame(drawFrame);
   }
@@ -1139,7 +1282,7 @@ function captureSingleFrame() {
   fl.classList.remove('hidden'); setTimeout(() => fl.classList.add('hidden'), 400);
 
   const vid = $('camera-video');
-  const src = (bgRemovalMode !== 0 && hasAiLoaded && lastProcessedCanvas.width > 0) ? lastProcessedCanvas : vid;
+  const src = (bgRemovalMode !== 0 && hasAiResult && lastProcessedCanvas.width > 0) ? lastProcessedCanvas : vid;
   const vw = src.videoWidth || src.width || 640;
   const vh = src.videoHeight || src.height || 480;
 
@@ -1480,14 +1623,18 @@ function resetApp(){
   forceHardReset();
   currentMode='multi'; activeLayouts=[]; carouselIndex=0;
   currentLayout=null; currentFrame=null; currentFilter=FILTERS[0]; updateFilterSelection();
-  slotAssetsData=[]; assetsCache={}; // ★ clear cached mask assets
+  slotAssetsData=[]; assetsCache={};
   const zs=$('review-zoom-slider'); if(zs) zs.value=1; $('final-image').src='';
   const gc=$('gif-controls'); if(gc){gc.classList.add('hidden','opacity-0');gc.classList.remove('opacity-100');}
-  // ★ Full MediaPipe teardown so next use re-initializes cleanly
-  bgRemovalMode=0; hasAiLoaded=false; mediaPipeLoading=false;
-  selfieSegmentation=null; aiLoopRunning=false;
+  // Full AI teardown
+  bgRemovalMode=0; hasAiLoaded=false; hasAiResult=false; mediaPipeLoading=false;
+  segmenterType=null; tasksSegmenter=null; legacySegmenter=null;
+  aiLoopRunning=false; aiSendBusy=false;
+  if(aiHealthTimeout){ clearTimeout(aiHealthTimeout); aiHealthTimeout=null; }
   const bgBtn=$('bg-toggle-btn');
   if(bgBtn){ bgBtn.innerText='🪄 BG: OFF'; bgBtn.classList.remove('bg-pink-500/80','border-pink-300'); bgBtn.classList.add('bg-black/50','border-white/30'); }
+  // Reset CSS filter that Tier 1 applies to canvas element
+  const pc=$('preview-canvas'); if(pc) pc.style.filter='';
   navigate('HOME');
 }
 
