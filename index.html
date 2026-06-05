@@ -1229,6 +1229,7 @@ function switchToVideoMode() {
   if (cssFilter === 'popart') cssFilter = 'hue-rotate(90deg) saturate(1.8) contrast(1.1)';
   vid.style.filter = (cssFilter && cssFilter !== 'none') ? cssFilter : '';
   vid.style.transform = isFacingUser ? 'scaleX(-1)' : '';
+  applyFramePreview();
 }
 
 // Canvas loop ONLY for BG removal — draws lastProcessedCanvas to preview-canvas
@@ -1334,6 +1335,13 @@ function updateCameraUI() {
     const active = retakeTargetIndex !== -1 ? (i===retakeTargetIndex) : (i<capturedPhotos.length);
     dots.innerHTML += `<div class="w-2 h-2 rounded-full border border-gray-400 ${active?'bg-[#ff4d9a] border-[#ff4d9a]':'bg-transparent'}"></div>`;
   }
+
+  // ★ Update viewport aspect ratio + frame mask/overlay for current slot
+  const slotIdx = retakeTargetIndex !== -1 ? retakeTargetIndex : Math.min(capturedPhotos.length, currentLayout.shots - 1);
+  const slot = currentLayout.slots[slotIdx];
+  const container = $('camera-viewport');
+  if (container && slot) container.style.aspectRatio = `${slot.w}/${slot.h}`;
+  applyFramePreview();
 }
 
 function startShootingSequence() {
