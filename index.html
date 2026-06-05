@@ -301,6 +301,7 @@ overflow: hidden;
 <div id="camera-viewport">
 <video id="camera-video" autoplay playsinline muted></video>
 <canvas id="preview-canvas" class="block w-full h-full object-contain"></canvas>
+<img id="preview-frame-overlay" class="absolute inset-0 w-full h-full pointer-events-none z-10" style="display:none;" />
 
 <div class="absolute top-0 left-0 w-full px-2 py-1 flex justify-between items-start z-20 pointer-events-none bg-gradient-to-b from-black/60 to-transparent">
 <span id="camera-filter-badge" class="px-1.5 py-0.5 rounded text-[8px] font-bold text-white border border-white/20 uppercase tracking-wider backdrop-blur-sm">NORMAL</span>
@@ -582,7 +583,9 @@ function forceHardReset() {
   aiSendBusy         = false;
   if (previewRAF) { cancelAnimationFrame(previewRAF); previewRAF = null; }
   // Clear CSS filter applied by Tier 1 preview
-  const pc = $('preview-canvas'); if (pc) pc.style.filter = '';
+  const pc = $('preview-canvas'); if (pc) { pc.style.filter = ''; pc.style.WebkitMaskImage = ''; pc.style.maskImage = ''; }
+  const vid = $('camera-video'); if (vid) { vid.style.filter = ''; vid.style.WebkitMaskImage = ''; vid.style.maskImage = ''; vid.style.transform = ''; }
+  const ov = $('preview-frame-overlay'); if (ov) { ov.style.display = 'none'; ov.src = ''; }
 
   capturedPhotos = []; photoTransforms = []; capturedPhotoRatios = [];
   retakeTargetIndex = -1; activePhotoIndex = 0; isShooting = false;
@@ -666,6 +669,7 @@ async function extractLayoutAssets() {
     });
     if (badge) badge.innerText = origBadge;
     assetsCache[cacheKey] = slotAssetsData;
+    applyFramePreview(); // refresh preview mask/overlay
     return;
   }
 
@@ -771,6 +775,7 @@ async function extractLayoutAssets() {
 
   if (badge) badge.innerText = origBadge;
   assetsCache[cacheKey] = slotAssetsData; // ★ cache so we never recompute
+  applyFramePreview(); // refresh preview mask/overlay
 }
 
 // ── Core render function ──────────────────────────────────────────────────────
@@ -1029,27 +1034,34 @@ function compositePersonOnBg(personCanvas, vid, vw, vh) {
 function processTasksResult(vid, result) {
   if (!result || !result.categoryMask) return;
   const vw = vid.videoWidth || 640, vh = vid.videoHeight || 480;
+  const mask = result.categoryMask;
+  const maskData = mask.getAsFloat32Array();
 
-  // Convert category mask (0=bg, 1=person) → white/transparent canvas
-  const maskData = result.categoryMask.getAsFloat32Array();
+  // ★ KEY FIX: mask is at MODEL resolution (e.g. 256×256), NOT video resolution
+  // Detect mask dimensions from the data length + aspect ratio
+  const mw = mask.width  || Math.round(Math.sqrt(maskData.length * (vw / vh)));
+  const mh = mask.height || Math.round(maskData.length / (mw || 1));
+
   if (!segMaskCanvas) {
     segMaskCanvas = document.createElement('canvas');
     segMaskCtx = segMaskCanvas.getContext('2d');
   }
-  if (segMaskCanvas.width !== vw || segMaskCanvas.height !== vh) {
-    segMaskCanvas.width = vw; segMaskCanvas.height = vh;
+  // Set canvas to MASK dimensions (not video dimensions)
+  if (segMaskCanvas.width !== mw || segMaskCanvas.height !== mh) {
+    segMaskCanvas.width = mw; segMaskCanvas.height = mh;
   }
-  const imgData = segMaskCtx.createImageData(vw, vh);
+  const imgData = segMaskCtx.createImageData(mw, mh);
   const d = imgData.data;
-  for (let i = 0; i < maskData.length; i++) {
+  for (let i = 0; i < maskData.length && i < mw * mh; i++) {
     const p = i * 4;
     d[p] = d[p+1] = d[p+2] = 255;
-    d[p+3] = maskData[i] > 0 ? 255 : 0; // person=opaque, bg=transparent
+    d[p+3] = maskData[i] > 0 ? 255 : 0;
   }
   segMaskCtx.putImageData(imgData, 0, 0);
 
+  // compositePersonOnBg scales mask to video dims via drawImage
   compositePersonOnBg(segMaskCanvas, vid, vw, vh);
-  result.close(); // release WASM resources
+  result.close();
 }
 
 // ── Old API: legacy callback ──────────────────────────────────────────────
@@ -1164,7 +1176,7 @@ async function startCamera() {
 
     // Set aspect ratio on viewport
     const container = $('camera-viewport');
-    const slotIdx = Math.min(capturedPhotos.length, (currentLayout ? currentLayout.shots - 1 : 0));
+    const slotIdx = retakeTargetIndex !== -1 ? retakeTargetIndex : Math.min(capturedPhotos.length, (currentLayout ? currentLayout.shots - 1 : 0));
     const slot = currentLayout ? currentLayout.slots[slotIdx] : null;
     if (container && slot) container.style.aspectRatio = `${slot.w}/${slot.h}`;
 
@@ -1173,6 +1185,9 @@ async function startCamera() {
     if (cssFilter === 'popart') cssFilter = 'hue-rotate(90deg) saturate(1.8) contrast(1.1)';
     vid.style.filter = (cssFilter && cssFilter !== 'none') ? cssFilter : '';
     vid.style.transform = isFacingUser ? 'scaleX(-1)' : '';
+
+    // ★ Apply frame mask + overlay on the video element (CSS mask = GPU, no canvas needed)
+    applyFramePreview();
 
     // ★ Default: show video directly, hide canvas
     vid.style.display = 'block';
@@ -1271,6 +1286,44 @@ function toggleTimer() {
   else cameraTimer = 3;
   $('timer-toggle-btn').innerText = `⏱️ ${cameraTimer}S`;
 }
+
+// ★ Apply frame mask + overlay as CSS on video/canvas elements (GPU-accelerated)
+function applyFramePreview() {
+  const vid     = $('camera-video');
+  const canvas  = $('preview-canvas');
+  const overlay = $('preview-frame-overlay');
+
+  // Get current slot's assets
+  const slotIdx = retakeTargetIndex !== -1 ? retakeTargetIndex : Math.min(capturedPhotos.length, (currentLayout ? currentLayout.shots - 1 : 0));
+  const assets  = slotAssetsData[slotIdx];
+
+  if (assets && assets.maskImg) {
+    // CSS mask-image on both video and canvas (heart shape, oval, etc.)
+    const maskSrc = assets.maskImg.src;
+    [vid, canvas].forEach(el => {
+      el.style.WebkitMaskImage = `url('${maskSrc}')`;
+      el.style.WebkitMaskSize  = '100% 100%';
+      el.style.maskImage       = `url('${maskSrc}')`;
+      el.style.maskSize        = '100% 100%';
+    });
+  } else {
+    // No mask — clear
+    [vid, canvas].forEach(el => {
+      el.style.WebkitMaskImage = '';
+      el.style.maskImage = '';
+    });
+  }
+
+  if (assets && assets.overlayImg && overlay) {
+    overlay.src = assets.overlayImg.src;
+    overlay.style.display = 'block';
+  } else if (overlay) {
+    overlay.style.display = 'none';
+    overlay.src = '';
+  }
+}
+
+// Re-apply frame preview after assets load (in case camera opened before assets ready)
 
 function updateCameraUI() {
   if (!currentLayout) return;
