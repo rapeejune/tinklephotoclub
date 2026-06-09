@@ -583,9 +583,11 @@ function forceHardReset() {
   aiSendBusy         = false;
   if (previewRAF) { cancelAnimationFrame(previewRAF); previewRAF = null; }
   // Clear CSS filter applied by Tier 1 preview
-  const pc = $('preview-canvas'); if (pc) { pc.style.filter = ''; pc.style.WebkitMaskImage = ''; pc.style.maskImage = ''; }
-  const vid = $('camera-video'); if (vid) { vid.style.filter = ''; vid.style.WebkitMaskImage = ''; vid.style.maskImage = ''; vid.style.transform = ''; }
-  const ov = $('preview-frame-overlay'); if (ov) { ov.style.display = 'none'; ov.src = ''; }
+  const pc = $('preview-canvas');
+  if (pc) { pc.style.filter = ''; pc.style.WebkitMaskImage = 'none'; pc.style.maskImage = 'none'; pc.style.removeProperty('-webkit-mask-image'); pc.style.removeProperty('mask-image'); }
+  const vid = $('camera-video');
+  if (vid) { vid.style.filter = ''; vid.style.WebkitMaskImage = 'none'; vid.style.maskImage = 'none'; vid.style.removeProperty('-webkit-mask-image'); vid.style.removeProperty('mask-image'); vid.style.transform = ''; }
+  const ov = $('preview-frame-overlay'); if (ov) { ov.style.display = 'none'; ov.removeAttribute('src'); }
 
   capturedPhotos = []; photoTransforms = []; capturedPhotoRatios = [];
   retakeTargetIndex = -1; activePhotoIndex = 0; isShooting = false;
@@ -1032,35 +1034,75 @@ function compositePersonOnBg(personCanvas, vid, vw, vh) {
 
 // ── New API: process Tasks Vision result ──────────────────────────────────
 function processTasksResult(vid, result) {
-  if (!result || !result.categoryMask) return;
+  if (!result || !result.categoryMask) { if(result) result.close(); return; }
   const vw = vid.videoWidth || 640, vh = vid.videoHeight || 480;
   const mask = result.categoryMask;
-  const maskData = mask.getAsFloat32Array();
 
-  // ★ KEY FIX: mask is at MODEL resolution (e.g. 256×256), NOT video resolution
-  // Detect mask dimensions from the data length + aspect ratio
-  const mw = mask.width  || Math.round(Math.sqrt(maskData.length * (vw / vh)));
-  const mh = mask.height || Math.round(maskData.length / (mw || 1));
+  let maskData;
+  try { maskData = mask.getAsFloat32Array(); } catch(e) { result.close(); return; }
+  const total = maskData.length;
+  if (total === 0) { result.close(); return; }
 
-  if (!segMaskCanvas) {
-    segMaskCanvas = document.createElement('canvas');
-    segMaskCtx = segMaskCanvas.getContext('2d');
+  // ★ Detect mask dimensions — the model outputs at its own resolution (often 256×256)
+  let mw = 0, mh = 0;
+  // Try the API properties first
+  try { mw = mask.width; mh = mask.height; } catch(e) {}
+  if (!mw || !mh) {
+    // Fallback: detect from data length
+    const sq = Math.round(Math.sqrt(total));
+    if (sq * sq === total) {
+      mw = mh = sq;                              // perfect square: 256×256, 128×128
+    } else {
+      // Try common widths
+      for (const w of [256, 320, 192, 144, 160]) {
+        if (total % w === 0) { mw = w; mh = total / w; break; }
+      }
+      if (!mw) { mw = sq; mh = Math.ceil(total / sq); } // last resort
+    }
   }
-  // Set canvas to MASK dimensions (not video dimensions)
-  if (segMaskCanvas.width !== mw || segMaskCanvas.height !== mh) {
-    segMaskCanvas.width = mw; segMaskCanvas.height = mh;
-  }
-  const imgData = segMaskCtx.createImageData(mw, mh);
-  const d = imgData.data;
-  for (let i = 0; i < maskData.length && i < mw * mh; i++) {
+
+  bgDebug(`mask ${mw}×${mh} (${total}px) → ${vw}×${vh}`);
+
+  // ★ Build mask canvas at MODEL dimensions (not video dimensions!)
+  if (!segMaskCanvas) { segMaskCanvas = document.createElement('canvas'); segMaskCtx = segMaskCanvas.getContext('2d'); }
+  segMaskCanvas.width = mw; segMaskCanvas.height = mh;
+  const mImg = segMaskCtx.createImageData(mw, mh);
+  const md = mImg.data;
+  const pixelCount = Math.min(total, mw * mh);
+  for (let i = 0; i < pixelCount; i++) {
     const p = i * 4;
-    d[p] = d[p+1] = d[p+2] = 255;
-    d[p+3] = maskData[i] > 0 ? 255 : 0;
+    md[p] = md[p+1] = md[p+2] = 255;
+    md[p+3] = maskData[i] > 0.3 ? 255 : 0;      // person = opaque, bg = transparent
   }
-  segMaskCtx.putImageData(imgData, 0, 0);
+  segMaskCtx.putImageData(mImg, 0, 0);
 
-  // compositePersonOnBg scales mask to video dims via drawImage
-  compositePersonOnBg(segMaskCanvas, vid, vw, vh);
+  // ★ Composite: scale mask → extract person → add background
+  if (lastProcessedCanvas.width !== vw || lastProcessedCanvas.height !== vh) {
+    lastProcessedCanvas.width = vw; lastProcessedCanvas.height = vh;
+  }
+  const ctx = lastProcessedCanvas.getContext('2d');
+  ctx.clearRect(0, 0, vw, vh);
+
+  // Draw mask scaled to video size (256×256 → 1280×720)
+  ctx.drawImage(segMaskCanvas, 0, 0, vw, vh);
+
+  // Keep only person-shaped pixels from video
+  ctx.globalCompositeOperation = 'source-in';
+  ctx.drawImage(vid, 0, 0, vw, vh);
+
+  // Fill background behind person
+  ctx.globalCompositeOperation = 'destination-over';
+  if      (bgRemovalMode === 1) ctx.fillStyle = '#ffdae0';
+  else if (bgRemovalMode === 2) ctx.fillStyle = getGridPattern(ctx) || '#fff0f5';
+  else if (bgRemovalMode === 3) ctx.fillStyle = getCloudPattern(ctx) || '#d6e8f9';
+  else if (bgRemovalMode === 4) {
+    const g = ctx.createLinearGradient(0,0,vw,vh);
+    g.addColorStop(0,'#ff9a9e'); g.addColorStop(0.5,'#fecfef'); g.addColorStop(1,'#a1c4fd');
+    ctx.fillStyle = g;
+  }
+  ctx.fillRect(0, 0, vw, vh);
+  ctx.globalCompositeOperation = 'source-over';
+
   result.close();
 }
 
@@ -1293,26 +1335,42 @@ function applyFramePreview() {
   const vid     = $('camera-video');
   const canvas  = $('preview-canvas');
   const overlay = $('preview-frame-overlay');
+  if (!vid || !canvas) return;
 
   // Get current slot's assets
   const slotIdx = retakeTargetIndex !== -1 ? retakeTargetIndex : Math.min(capturedPhotos.length, (currentLayout ? currentLayout.shots - 1 : 0));
   const assets  = slotAssetsData[slotIdx];
+  const els     = [vid, canvas];
 
   if (assets && assets.maskImg) {
-    // CSS mask-image on both video and canvas (heart shape, oval, etc.)
     const maskSrc = assets.maskImg.src;
-    [vid, canvas].forEach(el => {
+    els.forEach(el => {
+      // ★ Force-clear first, then set new mask (fixes Safari not updating)
+      el.style.WebkitMaskImage = 'none';
+      el.style.maskImage       = 'none';
+    });
+    // Force reflow so Safari registers the clear before applying new mask
+    void vid.offsetHeight;
+    els.forEach(el => {
       el.style.WebkitMaskImage = `url('${maskSrc}')`;
       el.style.WebkitMaskSize  = '100% 100%';
       el.style.maskImage       = `url('${maskSrc}')`;
       el.style.maskSize        = '100% 100%';
     });
   } else {
-    // No mask — clear
-    [vid, canvas].forEach(el => {
-      el.style.WebkitMaskImage = '';
-      el.style.maskImage = '';
+    els.forEach(el => {
+      el.style.WebkitMaskImage = 'none';
+      el.style.maskImage       = 'none';
+      el.style.WebkitMaskSize  = '';
+      el.style.maskSize        = '';
     });
+    // Extra clear: remove the properties entirely as fallback
+    setTimeout(() => {
+      els.forEach(el => {
+        el.style.removeProperty('-webkit-mask-image');
+        el.style.removeProperty('mask-image');
+      });
+    }, 0);
   }
 
   if (assets && assets.overlayImg && overlay) {
@@ -1320,7 +1378,7 @@ function applyFramePreview() {
     overlay.style.display = 'block';
   } else if (overlay) {
     overlay.style.display = 'none';
-    overlay.src = '';
+    overlay.removeAttribute('src');
   }
 }
 
