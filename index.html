@@ -311,6 +311,7 @@ overflow: hidden;
 <div id="screen-FRAME" class="screen">
 <div class="toy-window" style="background-color: var(--pastel-lavender);">
 <button class="back-btn" onclick="goBack('FRAME')">◀</button>
+<button onclick="openFrameManager()" class="absolute top-3 right-3 z-50 w-12 h-12 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-[22px] border-4 border-[#e6dcf5] shadow-md cursor-pointer active:scale-90">⚙️</button>
 <div class="pt-4 px-4 text-center shrink-0">
 <h2 class="header-title"><span class="text-yellow-400 text-2xl mr-2">⭐1</span> Choose Frame</h2>
 <p class="header-subtitle text-pink-500">เลือกกรอบที่ชอบ หรือถ่ายแบบไม่มีกรอบก็ได้!</p>
@@ -650,7 +651,7 @@ function forceHardReset() {
   const pc = $('preview-canvas');
   if (pc) { pc.style.filter = ''; pc.style.WebkitMaskImage = 'none'; pc.style.maskImage = 'none'; pc.style.removeProperty('-webkit-mask-image'); pc.style.removeProperty('mask-image'); }
   const vid = $('camera-video');
-  if (vid) { vid.style.filter = ''; vid.style.WebkitMaskImage = 'none'; vid.style.maskImage = 'none'; vid.style.removeProperty('-webkit-mask-image'); vid.style.removeProperty('mask-image'); vid.style.transform = ''; }
+  if (vid) { vid.style.filter = ''; vid.style.WebkitMaskImage = 'none'; vid.style.maskImage = 'none'; vid.style.removeProperty('-webkit-mask-image'); vid.style.removeProperty('mask-image'); vid.style.transform = ''; vid.style.opacity = '1'; vid.style.position = 'relative'; vid.style.pointerEvents = ''; }
   const ov = $('preview-frame-overlay'); if (ov) { ov.style.display = 'none'; ov.removeAttribute('src'); }
 
   capturedPhotos = []; photoTransforms = []; capturedPhotoRatios = [];
@@ -963,8 +964,8 @@ function renderFrameGrid_All() {
   noFrameBtn.onclick = () => {
     currentFrame = null; slotAssetsData = []; assetsCache = {};
     playSfx('beep');
-    // No frame → show ALL multi-shot layouts
-    activeLayouts = LAYOUTS.filter(l => l.mode === 'multi');
+    // No frame → show ALL layouts (multi + sticker)
+    activeLayouts = LAYOUTS;
     carouselIndex = 0; forceHardReset();
     navigate('LAYOUT');
   };
@@ -1394,8 +1395,11 @@ async function startCamera() {
     // ★ Apply frame mask + overlay on the video element (CSS mask = GPU, no canvas needed)
     applyFramePreview();
 
-    // ★ Default: show video directly, hide canvas
+    // ★ Default: show video directly, canvas hidden
     vid.style.display = 'block';
+    vid.style.opacity = '1';
+    vid.style.position = 'relative';
+    vid.style.pointerEvents = '';
     canvas.style.display = 'none';
 
     // If BG removal is active, switch to canvas mode
@@ -1412,20 +1416,29 @@ async function startCamera() {
   }
 }
 
-// Switch display: video hidden → canvas shown, start BG preview loop
+// Switch display: video invisible (but still decoding!) → canvas on top
+// ★ CRITICAL: iOS Safari stops decoding frames when display:none!
 function switchToBgCanvasMode() {
   const vid    = $('camera-video');
   const canvas = $('preview-canvas');
-  vid.style.display = 'none';
+  // Keep video rendering (opacity:0) so AI gets fresh frames
+  vid.style.opacity = '0';
+  vid.style.position = 'absolute';
+  vid.style.pointerEvents = 'none';
   canvas.style.display = 'block';
+  canvas.style.position = 'relative';
   if (!previewLoopRunning) startBgPreviewLoop();
 }
 
-// Switch display: canvas hidden → video shown, stop BG preview loop
+// Switch display: canvas hidden → video visible
 function switchToVideoMode() {
   const vid    = $('camera-video');
   const canvas = $('preview-canvas');
   canvas.style.display = 'none';
+  // Restore video visibility
+  vid.style.opacity = '1';
+  vid.style.position = 'relative';
+  vid.style.pointerEvents = '';
   vid.style.display = 'block';
   previewLoopRunning = false;
   if (previewRAF) { cancelAnimationFrame(previewRAF); previewRAF = null; }
@@ -1446,6 +1459,11 @@ function startBgPreviewLoop() {
   const canvas = $('preview-canvas');
   if (!vid || !canvas) { previewLoopRunning = false; return; }
   const ctx = canvas.getContext('2d');
+
+  // ★ Apply CSS filter to canvas element (same as video mode)
+  let cssFilter = currentFilter.css;
+  if (cssFilter === 'popart') cssFilter = 'hue-rotate(90deg) saturate(1.8) contrast(1.1)';
+  canvas.style.filter = (cssFilter && cssFilter !== 'none') ? cssFilter : '';
 
   function drawBgFrame(now) {
     if (!previewLoopRunning) return;
