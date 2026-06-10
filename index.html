@@ -162,6 +162,71 @@ overflow: hidden;
 </div>
 </div>
 
+<!-- ★ Frame Manager Full Screen -->
+<div id="frame-manager" class="fixed inset-0 z-[100] hidden flex-col bg-[#fdfcf9]" style="max-width:450px;margin:0 auto;">
+  <div class="flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-200 shrink-0">
+    <button onclick="closeFrameManager()" class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center font-black text-gray-500 active:scale-90 text-lg">◀</button>
+    <h3 class="font-black text-[#6e6367] text-[15px] uppercase flex-1">🎨 Frame Manager</h3>
+  </div>
+
+  <div class="flex-1 overflow-y-auto no-scrollbar px-4 py-3">
+    <!-- Add New Frame -->
+    <div class="bg-gradient-to-br from-[#fff0f5] to-[#ffdae0] rounded-2xl p-4 mb-4 border-2 border-[#ff4d9a]/30">
+      <p class="text-[11px] font-black text-[#ff2a85] uppercase mb-3">➕ เพิ่มเฟรมใหม่</p>
+      <input id="cf-name" placeholder="ชื่อเฟรม" class="w-full text-[13px] px-3 py-2.5 rounded-xl border-2 border-white font-bold mb-2 outline-none focus:border-[#ff4d9a] bg-white" />
+      
+      <div class="flex gap-2 mb-2">
+        <div class="flex-1">
+          <p class="text-[8px] font-bold text-[#ff2a85] mb-1">รูปกรอบ (Overlay) *</p>
+          <div id="cf-overlay-preview" onclick="pickImage('overlay')" class="w-full h-16 bg-white rounded-xl border-2 border-dashed border-pink-200 flex items-center justify-center cursor-pointer active:scale-95">
+            <span class="text-[10px] text-gray-400 font-bold">📷 แตะเพื่ออัปโหลด</span>
+          </div>
+        </div>
+        <div class="flex-1">
+          <p class="text-[8px] font-bold text-[#ff2a85] mb-1">รูป Mask (ไม่บังคับ)</p>
+          <div id="cf-mask-preview" onclick="pickImage('mask')" class="w-full h-16 bg-white rounded-xl border-2 border-dashed border-pink-200 flex items-center justify-center cursor-pointer active:scale-95">
+            <span class="text-[10px] text-gray-400 font-bold">📷 แตะเพื่ออัปโหลด</span>
+          </div>
+        </div>
+      </div>
+      
+      <p class="text-[8px] text-gray-400 mb-1">หรือวาง URL (GitHub / ลิงก์ตรง)</p>
+      <input id="cf-overlay-url" placeholder="URL รูปกรอบ (ถ้าไม่อัปโหลด)" class="w-full text-[10px] px-3 py-1.5 rounded-lg border border-gray-200 font-bold mb-1 outline-none bg-white" />
+      <input id="cf-mask-url" placeholder="URL รูป Mask (ถ้าไม่อัปโหลด)" class="w-full text-[10px] px-3 py-1.5 rounded-lg border border-gray-200 font-bold mb-2 outline-none bg-white" />
+      
+      <select id="cf-layout" class="w-full text-[11px] px-3 py-2.5 rounded-xl border-2 border-white font-bold mb-3 outline-none bg-white"></select>
+      <button onclick="addCustomFrame()" class="w-full bg-[#ff4d9a] text-white font-black py-3 rounded-xl text-[13px] active:scale-95 shadow-lg">➕ เพิ่มเฟรม</button>
+    </div>
+
+    <!-- All Frames List -->
+    <p class="text-[10px] font-black text-gray-400 uppercase mb-2">เฟรมทั้งหมด (<span id="frame-count">0</span>)</p>
+    <div id="all-frames-list"></div>
+  </div>
+</div>
+
+<!-- Edit Frame Modal -->
+<div id="edit-frame-modal" class="fixed inset-0 z-[110] hidden items-center justify-center bg-black/60 backdrop-blur-sm">
+<div class="bg-white p-5 rounded-3xl shadow-2xl w-[300px] border-4 border-[#e6dcf5]">
+  <h3 class="font-black text-[#6e6367] text-[13px] mb-3">✏️ แก้ไขเฟรม</h3>
+  <input id="ef-name" placeholder="ชื่อเฟรม" class="w-full text-[12px] px-3 py-2 rounded-xl border-2 border-gray-200 font-bold mb-2 outline-none focus:border-[#ff4d9a]" />
+  <div class="flex gap-2 mb-2">
+    <div class="flex-1 text-center">
+      <p class="text-[8px] font-bold text-gray-500 mb-1">Overlay</p>
+      <div id="ef-overlay-preview" onclick="pickImage('edit-overlay')" class="w-full h-14 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center cursor-pointer active:scale-95 overflow-hidden"></div>
+    </div>
+    <div class="flex-1 text-center">
+      <p class="text-[8px] font-bold text-gray-500 mb-1">Mask</p>
+      <div id="ef-mask-preview" onclick="pickImage('edit-mask')" class="w-full h-14 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center cursor-pointer active:scale-95 overflow-hidden"></div>
+    </div>
+  </div>
+  <select id="ef-layout" class="w-full text-[10px] px-3 py-2 rounded-xl border-2 border-gray-200 font-bold mb-3 outline-none bg-white"></select>
+  <div class="flex gap-2">
+    <button onclick="closeEditModal()" class="flex-1 bg-gray-100 text-gray-600 font-black py-2 rounded-xl text-[11px] active:scale-95">ยกเลิก</button>
+    <button onclick="saveEditFrame()" class="flex-1 bg-[#ff4d9a] text-white font-black py-2 rounded-xl text-[11px] active:scale-95">บันทึก</button>
+  </div>
+</div>
+</div>
+
 <!-- Screensaver Overlay -->
 <div id="screensaver" class="fixed inset-0 z-[200] hidden flex-col items-center justify-center cursor-pointer transition-opacity duration-500">
   <div class="absolute inset-0 bg-white/40 backdrop-blur-[2px]"></div>
@@ -193,7 +258,7 @@ overflow: hidden;
 <h1 class="text-[72px] font-black tracking-tighter leading-none text-white drop-shadow-lg" style="text-shadow: 0 4px 15px rgba(255,42,133,0.3);">TINKLE<br/><span class="text-[#ff2a85] text-[42px] tracking-tight">PHOTO CLUB</span></h1>
 </div>
 <div class="fade-in flex flex-col items-center w-full" style="animation-delay:0.2s">
-<button class="toy-action-btn mb-6" onclick="navigate('MODE')">OK</button>
+<button class="toy-action-btn mb-6" onclick="navigate('FRAME')">OK</button>
 <div class="bg-white/95 backdrop-blur-sm px-5 py-2 rounded-full border-[3px] border-white shadow-sm text-center">
 <p class="text-[#ff2a85] font-black text-[11px] tracking-wide flex items-center gap-1.5 uppercase"><span>💖 TAP OK TO START 💖</span></p>
 </div>
@@ -247,21 +312,15 @@ overflow: hidden;
 <div class="toy-window" style="background-color: var(--pastel-lavender);">
 <button class="back-btn" onclick="goBack('FRAME')">◀</button>
 <div class="pt-4 px-4 text-center shrink-0">
-<h2 class="header-title"><span class="text-yellow-400 text-2xl mr-2">⭐3</span> Choose Frame</h2>
+<h2 class="header-title"><span class="text-yellow-400 text-2xl mr-2">⭐1</span> Choose Frame</h2>
+<p class="header-subtitle text-pink-500">เลือกกรอบที่ชอบ หรือถ่ายแบบไม่มีกรอบก็ได้!</p>
 </div>
 <div class="w-full px-4 mt-2 shrink-0 overflow-x-auto no-scrollbar flex justify-center space-x-2" id="frame-category-tabs"></div>
 <div class="flex-1 w-full mt-2 px-6 py-2 overflow-y-auto no-scrollbar">
 <div class="grid grid-cols-4 gap-2" id="frame-grid-container"></div>
 </div>
-<div class="shrink-0 px-6 py-3 flex justify-between items-center bg-white border-t border-gray-100 mt-auto mb-6">
-<div class="flex items-center space-x-3">
-<div class="w-12 h-12 bg-gray-100 rounded border border-gray-200 shrink-0 overflow-hidden" id="selected-frame-thumb"></div>
-<div class="min-w-0">
-<h3 id="selected-frame-name" class="font-black text-[12px] text-gray-700 uppercase truncate">...</h3>
-<p class="text-[9px] font-bold text-pink-500 uppercase">Selected</p>
-</div>
-</div>
-<button class="toy-action-btn !px-8 !py-2 !text-xl" onclick="navigate('FILTER')">OK</button>
+<div class="shrink-0 px-6 py-3 flex items-center justify-center bg-white border-t border-gray-100 mt-auto mb-6">
+<p class="text-[10px] font-bold text-gray-400 text-center">👆 แตะเลือกกรอบ หรือ ✨ ถ่ายแบบไม่มีกรอบ</p>
 </div>
 </div>
 <div class="toy-hidden-area"></div>
@@ -272,7 +331,7 @@ overflow: hidden;
 <div class="toy-window" style="background-color: var(--pastel-blue);">
 <button class="back-btn" onclick="goBack('FILTER')">◀</button>
 <div class="pt-4 px-4 text-center shrink-0">
-<h2 class="header-title"><span class="text-yellow-400 text-2xl mr-2">⭐4</span> Select Filter</h2>
+<h2 class="header-title"><span class="text-yellow-400 text-2xl mr-2">⭐3</span> Select Filter</h2>
 </div>
 <div class="w-full px-8 mt-2 grid grid-cols-2 gap-3 flex-1 overflow-y-auto no-scrollbar pb-2" id="filter-list-container"></div>
 <div class="flex justify-center shrink-0 pt-3 pb-6 border-t border-gray-100 mt-auto">
@@ -336,7 +395,7 @@ overflow: hidden;
 <div class="toy-window" style="background-color: var(--pastel-mint); height: 54vh;">
 <button class="back-btn" onclick="goBack('REVIEW')">◀</button>
 <div class="pt-4 px-4 text-center shrink-0">
-<h2 class="header-title"><span class="text-yellow-400 text-2xl mr-2">⭐5</span> Adjust Photos</h2>
+<h2 class="header-title"><span class="text-yellow-400 text-2xl mr-2">⭐4</span> Adjust Photos</h2>
 <p class="header-subtitle mt-0.5 text-pink-500" id="review-instruction">แตะเพื่อซูมและเลื่อนจัดพิกัด</p>
 </div>
 <div class="flex-1 overflow-y-auto p-2 w-full no-scrollbar flex flex-col items-center justify-center">
@@ -358,7 +417,7 @@ overflow: hidden;
 <div id="screen-RESULT" class="screen">
   <div class="toy-window bg-white" style="height: 54vh;">
     <div class="pt-3 px-4 text-center shrink-0">
-      <h2 class="header-title"><span class="text-yellow-400 text-xl mr-2">⭐6</span> Ready to Print!</h2>
+      <h2 class="header-title"><span class="text-yellow-400 text-xl mr-2">⭐5</span> Ready to Print!</h2>
     </div>
     <div class="flex-1 w-full flex items-center justify-center p-2 min-h-0 overflow-hidden relative">
       <img id="final-image" src="" class="max-w-[80%] max-h-full shadow-md border-2 border-gray-200 object-contain fade-in rounded-[8px]" />
@@ -417,14 +476,18 @@ const MASTER_CANVAS = {
 };
 
 const LAYOUTS = [
+{ id: 'classic_2cut', mode: 'multi', name: '2x6" 2 PHOTO', desc: 'Classic 2-Cut Strip', type: 'twin-strip', orientation: 'portrait', canvas: 'PORTRAIT', shots: 2, icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="14" y="6" width="12" height="12" rx="0.5"/><rect x="14" y="22" width="12" height="12" rx="0.5"/></svg>`, slots: [ {x:0,y:0,w:600,h:900}, {x:0,y:900,w:600,h:900} ] },
 { id: 'classic_3cut', mode: 'multi', name: '2x6" 3 PHOTO', desc: 'Classic 3-Cut Strip', type: 'twin-strip', orientation: 'portrait', canvas: 'PORTRAIT', shots: 3, icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="14" y="6" width="12" height="8" rx="0.5"/><rect x="14" y="16" width="12" height="8" rx="0.5"/><rect x="14" y="26" width="12" height="8" rx="0.5"/></svg>`, slots: [ {x:0,y:0,w:600,h:600}, {x:0,y:600,w:600,h:600}, {x:0,y:1200,w:600,h:600} ] },
 { id: 'classic_4cut', mode: 'multi', name: '2x6" 4 PHOTO', desc: 'Classic 4-Cut Strip', type: 'twin-strip', orientation: 'portrait', canvas: 'PORTRAIT', shots: 4, icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="14" y="4" width="12" height="6" rx="0.5"/><rect x="14" y="12" width="12" height="6" rx="0.5"/><rect x="14" y="20" width="12" height="6" rx="0.5"/><rect x="14" y="28" width="12" height="6" rx="0.5"/></svg>`, slots: [ {x:0,y:0,w:600,h:450}, {x:0,y:450,w:600,h:450}, {x:0,y:900,w:600,h:450}, {x:0,y:1350,w:600,h:450} ] },
 { id: 'single_portrait', mode: 'multi', name: '4x6" PORTRAIT', desc: 'Single Portrait', type: 'full-sheet', orientation: 'portrait', canvas: 'PORTRAIT', shots: 1, icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="8" y="6" width="24" height="22" rx="0.5"/></svg>`, slots: [ {x:0,y:0,w:1200,h:1800} ] },
 { id: 'single_landscape', mode: 'multi', name: '4x6" LANDSCAPE', desc: 'Single Landscape', type: 'full-sheet', orientation: 'landscape', canvas: 'LANDSCAPE', shots: 1, icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="4" y="10" width="32" height="16" rx="0.5"/></svg>`, slots: [ {x:0,y:0,w:1800,h:1200} ] },
+{ id: 'grid_4_full', mode: 'multi', name: '4x6" 4-GRID', desc: '4-Grid Full Sheet', type: 'full-sheet', orientation: 'portrait', canvas: 'PORTRAIT', shots: 4, icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="6" y="4" width="12" height="14" rx="1"/><rect x="22" y="4" width="12" height="14" rx="1"/><rect x="6" y="22" width="12" height="14" rx="1"/><rect x="22" y="22" width="12" height="14" rx="1"/></svg>`, slots: [ {x:0,y:0,w:600,h:900}, {x:600,y:0,w:600,h:900}, {x:0,y:900,w:600,h:900}, {x:600,y:900,w:600,h:900} ] },
+{ id: 'double_landscape', mode: 'multi', name: '4x6" DOUBLE', desc: 'Double Landscape', type: 'full-sheet', orientation: 'portrait', canvas: 'PORTRAIT', shots: 2, icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="4" y="4" width="32" height="14" rx="1"/><rect x="4" y="22" width="32" height="14" rx="1"/></svg>`, slots: [ {x:0,y:0,w:1200,h:900}, {x:0,y:900,w:1200,h:900} ] },
 { id: 'mini_4_sticker', mode: 'single', name: '4 MINI STICKERS', desc: 'Mini Sticker Sheet', type: 'multiprint', orientation: 'portrait', canvas: 'PORTRAIT', shots: 1, icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="8" y="8" width="10" height="10" rx="1"/><rect x="22" y="8" width="10" height="10" rx="1"/><rect x="8" y="22" width="10" height="10" rx="1"/><rect x="22" y="22" width="10" height="10" rx="1"/></svg>`, slots: [ {x:0,y:0,w:600,h:900}, {x:600,y:0,w:600,h:900}, {x:0,y:900,w:600,h:900}, {x:600,y:900,w:600,h:900} ] },
 { id: 'mix_6_sticker', mode: 'single', name: '6 MIX STICKERS', desc: 'Mixed Sizes Sheet', type: 'multiprint', orientation: 'portrait', canvas: 'PORTRAIT', shots: 1, icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="6" y="4" width="12" height="14" rx="1"/><rect x="22" y="4" width="12" height="14" rx="1"/><rect x="6" y="20" width="12" height="6" rx="1"/><rect x="22" y="20" width="12" height="6" rx="1"/><rect x="6" y="28" width="12" height="6" rx="1"/><rect x="22" y="28" width="12" height="6" rx="1"/></svg>`, slots: [ {x:0,y:0,w:600,h:900}, {x:600,y:0,w:600,h:900}, {x:0,y:900,w:600,h:450}, {x:600,y:900,w:600,h:450}, {x:0,y:1350,w:600,h:450}, {x:600,y:1350,w:600,h:450} ] },
 { id: 'mix_8_sticker', mode: 'single', name: '8 MIX STICKERS', desc: 'Mixed Sizes Sheet', type: 'multiprint', orientation: 'portrait', canvas: 'PORTRAIT', shots: 1, icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="6" y="4" width="12" height="14" rx="1"/><rect x="22" y="4" width="12" height="14" rx="1"/><rect x="4" y="20" width="8" height="6" rx="1"/><rect x="16" y="20" width="8" height="6" rx="1"/><rect x="28" y="20" width="8" height="6" rx="1"/><rect x="4" y="28" width="8" height="6" rx="1"/><rect x="16" y="28" width="8" height="6" rx="1"/><rect x="28" y="28" width="8" height="6" rx="1"/></svg>`, slots: [ {x:0,y:0,w:600,h:900}, {x:600,y:0,w:600,h:900}, {x:0,y:900,w:400,h:450}, {x:400,y:900,w:400,h:450}, {x:800,y:900,w:400,h:450}, {x:0,y:1350,w:400,h:450}, {x:400,y:1350,w:400,h:450}, {x:800,y:1350,w:400,h:450} ] },
-{ id: 'grid_9_sticker', mode: 'single', name: '9 GRID STICKERS', desc: '3x3 Grid Sheet', type: 'multiprint', orientation: 'portrait', canvas: 'PORTRAIT', shots: 1, icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="6" y="4" width="8" height="8" rx="1"/><rect x="16" y="4" width="8" height="8" rx="1"/><rect x="26" y="4" width="8" height="8" rx="1"/><rect x="6" y="14" width="8" height="8" rx="1"/><rect x="16" y="14" width="8" height="8" rx="1"/><rect x="26" y="14" width="8" height="8" rx="1"/><rect x="6" y="24" width="8" height="8" rx="1"/><rect x="16" y="24" width="8" height="8" rx="1"/><rect x="26" y="24" width="8" height="8" rx="1"/></svg>`, slots: [ {x:0,y:0,w:400,h:600}, {x:400,y:0,w:400,h:600}, {x:800,y:0,w:400,h:600}, {x:0,y:600,w:400,h:600}, {x:400,y:600,w:400,h:600}, {x:800,y:600,w:400,h:600}, {x:0,y:1200,w:400,h:600}, {x:400,y:1200,w:400,h:600}, {x:800,y:1200,w:400,h:600} ] }
+{ id: 'grid_9_sticker', mode: 'single', name: '9 GRID STICKERS', desc: '3x3 Grid Sheet', type: 'multiprint', orientation: 'portrait', canvas: 'PORTRAIT', shots: 1, icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="6" y="4" width="8" height="8" rx="1"/><rect x="16" y="4" width="8" height="8" rx="1"/><rect x="26" y="4" width="8" height="8" rx="1"/><rect x="6" y="14" width="8" height="8" rx="1"/><rect x="16" y="14" width="8" height="8" rx="1"/><rect x="26" y="14" width="8" height="8" rx="1"/><rect x="6" y="24" width="8" height="8" rx="1"/><rect x="16" y="24" width="8" height="8" rx="1"/><rect x="26" y="24" width="8" height="8" rx="1"/></svg>`, slots: [ {x:0,y:0,w:400,h:600}, {x:400,y:0,w:400,h:600}, {x:800,y:0,w:400,h:600}, {x:0,y:600,w:400,h:600}, {x:400,y:600,w:400,h:600}, {x:800,y:600,w:400,h:600}, {x:0,y:1200,w:400,h:600}, {x:400,y:1200,w:400,h:600}, {x:800,y:1200,w:400,h:600} ] },
+{ id: 'grid_6_full', mode: 'multi', name: '4x6" 6-GRID', desc: '6-Grid Full Sheet', type: 'full-sheet', orientation: 'portrait', canvas: 'PORTRAIT', shots: 6, icon: `<svg viewBox="0 0 40 40" fill="currentColor" class="w-full h-full"><rect x="6" y="4" width="12" height="8" rx="1"/><rect x="22" y="4" width="12" height="8" rx="1"/><rect x="6" y="14" width="12" height="8" rx="1"/><rect x="22" y="14" width="12" height="8" rx="1"/><rect x="6" y="24" width="12" height="8" rx="1"/><rect x="22" y="24" width="12" height="8" rx="1"/></svg>`, slots: [ {x:0,y:0,w:600,h:600}, {x:600,y:0,w:600,h:600}, {x:0,y:600,w:600,h:600}, {x:600,y:600,w:600,h:600}, {x:0,y:1200,w:600,h:600}, {x:600,y:1200,w:600,h:600} ] }
 ];
 
 const FRAMES = [
@@ -433,7 +496,8 @@ const FRAMES = [
 { id: 'blue_heart', name: 'Blue Heart', category: 'special', supportedLayouts: ['single_portrait'], overlay: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/Blue%20heart.png', mask: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/Blue%20heart_mark.png' },
 { id: 'hbd', name: 'HBD', category: 'special', supportedLayouts: ['classic_3cut'], overlay: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/HBD.png', mask: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/HBD_mark.png' },
 { id: 'pink_heart', name: 'Pink Heart', category: 'special', supportedLayouts: ['classic_4cut'], overlay: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/pink%20heart.png', mask: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/pink%20heart_mark.png' },
-{ id: 'no_bad', name: 'No Bad', category: 'special', supportedLayouts: ['classic_4cut'], overlay: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/no%20bad.png', mask: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/no%20bad_mark.png' }
+{ id: 'no_bad', name: 'No Bad', category: 'special', supportedLayouts: ['classic_4cut'], overlay: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/no%20bad.png', mask: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/no%20bad_mark.png' },
+{ id: 'music', name: 'Music', category: 'special', supportedLayouts: ['classic_3cut', 'grid_6_full'], overlay: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/Music.png', mask: 'https://raw.githubusercontent.com/rapeejune/tinklephotoclub/main/music_mark.png' }
 ];
 
 const FILTERS = [
@@ -443,7 +507,7 @@ const FILTERS = [
 { id: 'sepia', name: 'SEPIA', css: 'sepia(100%) contrast(1.1)' },
 { id: 'popart', name: 'POP ART', css: 'popart' }
 ];
-const CATEGORIES = ['special'];
+const CATEGORIES = ['special', 'custom'];
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let currentMode = 'multi', activeLayouts = [], carouselIndex = 0;
@@ -703,12 +767,23 @@ async function extractLayoutAssets() {
   const halfW   = mW / 2;
   const nSlots  = currentLayout.slots.length;
 
-  let leftRegions = allRegions.filter(r => r.cx < halfW).sort((a,b)=>a.cy-b.cy).slice(0, nSlots);
-  let rightRegions = [];
+  let leftRegions, rightRegions = [];
+
   if (isTwin) {
-    rightRegions = allRegions.filter(r=>r.cx>=halfW).sort((a,b)=>a.cy-b.cy).slice(0, nSlots);
+    // Twin-strip: separate left and right halves
+    leftRegions  = allRegions.filter(r => r.cx < halfW).sort((a,b)=>a.cy-b.cy).slice(0, nSlots);
+    rightRegions = allRegions.filter(r => r.cx >= halfW).sort((a,b)=>a.cy-b.cy).slice(0, nSlots);
     if (rightRegions.length < nSlots)
       rightRegions = leftRegions.map(r=>({...r, x0:r.x0+halfW, x1:r.x1+halfW, cx:r.cx+halfW}));
+  } else {
+    // ★ Full-sheet / grid: use ALL regions, sort by row (cy) then column (cx)
+    leftRegions = allRegions
+      .sort((a,b) => {
+        const rowA = Math.round(a.cy / (mH / 3)); // approximate row grouping
+        const rowB = Math.round(b.cy / (mH / 3));
+        return rowA !== rowB ? rowA - rowB : a.cx - b.cx;
+      })
+      .slice(0, nSlots);
   }
 
   // Build mask/overlay crops at FULL resolution (for quality export)
@@ -848,15 +923,22 @@ function navigate(screenName) {
   const screen = $('screen-' + screenName);
   if (screen) screen.classList.add('active');
 
-  if (screenName === 'FRAME') { updateSelectedFrameUI(); }
+  if (screenName === 'FRAME') {
+    // ★ Frame-first: show ALL frames + "No Frame" option
+    renderAllAvailableFrames();
+    updateSelectedFrameUI();
+  }
+  else if (screenName === 'LAYOUT') {
+    // ★ Show only layouts compatible with selected frame
+    buildCompatibleLayouts();
+    updateCarousel();
+  }
   else if (screenName === 'CAMERA') {
-    // Only re-extract assets if not already cached for current frame+layout combo
     const cacheKey = `${currentFrame ? currentFrame.id : 'noframe'}_${currentLayout ? currentLayout.id : 'nolayout'}`;
     if (!assetsCache[cacheKey]) slotAssetsData = [];
     startCamera();
   }
   else {
-    // Stop camera & loops when leaving CAMERA screen
     if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
     previewLoopRunning = false;
     aiLoopRunning = false;
@@ -865,13 +947,94 @@ function navigate(screenName) {
   }
 }
 
+// ★ Show all frames in a grid — "No Frame" + all available frames
+function renderAllAvailableFrames() {
+  renderFrameTabs();
+  renderFrameGrid_All();
+}
+
+function renderFrameGrid_All() {
+  const c = $('frame-grid-container'); c.innerHTML = '';
+  
+  // "No Frame" option
+  const noFrameBtn = document.createElement('div');
+  const noFrameSel = !currentFrame;
+  noFrameBtn.className = `frame-thumb bg-white/90 backdrop-blur border-[3px] p-1.5 rounded-xl shadow-sm flex flex-col items-center justify-center text-center cursor-pointer active:scale-[0.95] ${noFrameSel ? 'selected border-[#ff4d9a] bg-[#fff0f5]' : 'border-[#f2ede9]'}`;
+  noFrameBtn.onclick = () => {
+    currentFrame = null; slotAssetsData = []; assetsCache = {};
+    playSfx('beep');
+    // No frame → show ALL multi-shot layouts
+    activeLayouts = LAYOUTS.filter(l => l.mode === 'multi');
+    carouselIndex = 0; forceHardReset();
+    navigate('LAYOUT');
+  };
+  noFrameBtn.innerHTML = `<div class="w-full aspect-square mb-1 rounded flex items-center justify-center text-2xl bg-gray-50 border border-gray-200">✨</div><h3 class="font-black text-[#6e6367] text-[7px] uppercase">NO FRAME</h3>`;
+  c.appendChild(noFrameBtn);
+
+  // All actual frames
+  FRAMES.forEach(frame => {
+    const btn = document.createElement('div');
+    const sel = currentFrame && currentFrame.id === frame.id;
+    btn.className = `frame-thumb bg-white/90 backdrop-blur border-[3px] border-[#f2ede9] p-1.5 rounded-xl shadow-sm flex flex-col items-center justify-center text-center cursor-pointer active:scale-[0.95] ${sel ? 'selected border-[#ff4d9a] bg-[#fff0f5]' : ''}`;
+    btn.onclick = () => selectFrameFirst(frame);
+    const layoutCount = frame.supportedLayouts.length;
+    btn.innerHTML = `<div class="w-full aspect-square mb-1 rounded border border-gray-200 shadow-inner relative overflow-hidden bg-gray-100 flex items-center justify-center"><img src="${frame.overlay}" style="width:100%;height:100%;object-fit:contain;" crossorigin="anonymous" onerror="this.style.opacity='0.3'"/></div><h3 class="font-black text-[#6e6367] text-[7px] uppercase leading-tight truncate w-full">${frame.name}</h3>${layoutCount > 1 ? `<p class="text-[6px] text-pink-400 font-bold">${layoutCount} layouts</p>` : ''}`;
+    c.appendChild(btn);
+  });
+
+  // "Add Frame" button
+  const addBtn = document.createElement('div');
+  addBtn.className = 'frame-thumb bg-white/80 border-[3px] border-dashed border-gray-300 p-1.5 rounded-xl flex flex-col items-center justify-center text-center cursor-pointer active:scale-[0.95] hover:border-[#ff4d9a]';
+  addBtn.onclick = () => { playSfx('beep'); openFrameManager(); };
+  addBtn.innerHTML = '<div class="w-full aspect-square mb-1 flex items-center justify-center text-2xl text-gray-400">➕</div><h3 class="font-black text-gray-400 text-[7px] uppercase">ADD</h3>';
+  c.appendChild(addBtn);
+}
+
+function selectFrameFirst(frame) {
+  playSfx('beep');
+  currentFrame = frame;
+  slotAssetsData = []; assetsCache = {};
+
+  // Find compatible layouts
+  const compatible = LAYOUTS.filter(l => frame.supportedLayouts.includes(l.id));
+  if (compatible.length === 0) {
+    showAlert('เฟรมนี้ยังไม่มี Layout ที่รองรับ');
+    return;
+  }
+
+  // If only 1 layout → auto-select and skip to filter
+  if (compatible.length === 1) {
+    currentLayout = compatible[0];
+    forceHardReset();
+    navigate('FILTER');
+    return;
+  }
+
+  // Multiple layouts → show layout picker
+  activeLayouts = compatible;
+  carouselIndex = 0;
+  forceHardReset();
+  navigate('LAYOUT');
+}
+
+// Build compatible layouts when navigating to LAYOUT from frame selection
+function buildCompatibleLayouts() {
+  if (!currentFrame) {
+    // No frame → all multi layouts
+    activeLayouts = LAYOUTS.filter(l => l.mode === 'multi');
+  }
+  // activeLayouts is already set by selectFrameFirst or "No Frame" click
+  if (activeLayouts.length > 0 && !currentLayout) {
+    currentLayout = activeLayouts[0];
+  }
+}
+
 function goBack(step) {
   playSfx('beep');
   switch(step) {
-    case 'MODE':   navigate('HOME');   break;
-    case 'LAYOUT': navigate('MODE');   break;
-    case 'FRAME':  navigate('LAYOUT'); break;
-    case 'FILTER': navigate('FRAME');  break;
+    case 'FRAME':  navigate('HOME'); break;
+    case 'LAYOUT': navigate('FRAME'); break;
+    case 'FILTER': navigate('FRAME'); break;
     case 'CAMERA': forceHardReset(); navigate('FILTER'); break;
     case 'REVIEW': forceHardReset(); navigate('FILTER'); break;
   }
@@ -1684,7 +1847,255 @@ function updateFilterSelection() {
 }
 
 // ── App init ──────────────────────────────────────────────────────────────────
-function init() { renderModeSelection(); initCarouselSwipe(); initPanEvents(); renderFilters(); preloadAssets(); initIdleTimer(); }
+// ── Frame Manager ─────────────────────────────────────────────────────────────
+// Supports: upload from device, paste URL, edit ALL frames, delete, localStorage
+
+let pendingImages = {}; // temp storage for picked images before saving
+let editingFrameId = null;
+
+function loadCustomFrames() {
+  try {
+    const saved = localStorage.getItem('tinkle_custom_frames');
+    if (!saved) return;
+    const customs = JSON.parse(saved);
+    customs.forEach(cf => {
+      const existing = FRAMES.findIndex(f => f.id === cf.id);
+      if (existing !== -1) {
+        // Override built-in frame with saved edits
+        Object.assign(FRAMES[existing], cf);
+        FRAMES[existing].edited = true;
+      } else {
+        FRAMES.push(cf);
+      }
+    });
+  } catch(e) { console.warn('loadCustomFrames:', e); }
+}
+
+function saveAllFrames() {
+  try {
+    // Save both custom frames and edited built-in frames
+    const toSave = FRAMES.filter(f => f.custom || f.edited);
+    localStorage.setItem('tinkle_custom_frames', JSON.stringify(toSave));
+  } catch(e) {
+    if (e.name === 'QuotaExceededError') showAlert('พื้นที่จัดเก็บเต็มแล้ว ลองลบเฟรมที่ไม่ใช้ค่ะ 🥺');
+    else console.warn('saveAllFrames:', e);
+  }
+}
+
+// ★ Pick image from device — returns data URL
+function pickImage(target) {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/png,image/jpeg,image/webp';
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        // Resize to max 1200px to save localStorage space
+        const max = 1200;
+        let w = img.width, h = img.height;
+        if (w > max || h > max) {
+          if (w > h) { h = Math.round(h * max / w); w = max; }
+          else       { w = Math.round(w * max / h); h = max; }
+        }
+        const c = document.createElement('canvas'); c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        const dataUrl = c.toDataURL('image/png', 0.85);
+        c.width = 0; c.height = 0;
+
+        pendingImages[target] = dataUrl;
+        updateImagePreview(target, dataUrl);
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+  input.click();
+}
+
+function updateImagePreview(target, dataUrl) {
+  const previewMap = {
+    'overlay':      'cf-overlay-preview',
+    'mask':         'cf-mask-preview',
+    'edit-overlay': 'ef-overlay-preview',
+    'edit-mask':    'ef-mask-preview',
+  };
+  const el = $(previewMap[target]);
+  if (el) el.innerHTML = `<img src="${dataUrl}" class="w-full h-full object-contain" />`;
+}
+
+function openFrameManager() {
+  const modal = $('frame-manager');
+  modal.classList.remove('hidden'); modal.classList.add('flex');
+  pendingImages = {};
+  // Reset add form
+  $('cf-name').value = '';
+  if($('cf-overlay-url')) $('cf-overlay-url').value = '';
+  if($('cf-mask-url')) $('cf-mask-url').value = '';
+  $('cf-overlay-preview').innerHTML = '<span class="text-[10px] text-gray-400 font-bold">📷 แตะเพื่ออัปโหลด</span>';
+  $('cf-mask-preview').innerHTML = '<span class="text-[10px] text-gray-400 font-bold">📷 แตะเพื่ออัปโหลด</span>';
+  // Populate layout dropdown
+  populateLayoutSelect('cf-layout');
+  renderAllFramesList();
+}
+
+function closeFrameManager() {
+  $('frame-manager').classList.remove('flex'); $('frame-manager').classList.add('hidden');
+  pendingImages = {};
+  filterAvailableFrames(); renderFrameGrid(); renderFrameTabs();
+}
+
+function populateLayoutSelect(selectId) {
+  const sel = $(selectId); if (!sel) return;
+  sel.innerHTML = '<option value="">-- เลือก Layout --</option>';
+  LAYOUTS.forEach(l => {
+    sel.innerHTML += `<option value="${l.id}">${l.name} (${l.shots} shot${l.shots>1?'s':''})</option>`;
+  });
+}
+
+const toRaw = url => url ? url.replace('github.com/', 'raw.githubusercontent.com/').replace('/blob/', '/') : '';
+
+function addCustomFrame() {
+  const name = $('cf-name').value.trim();
+  const overlayUrl = $('cf-overlay-url') ? $('cf-overlay-url').value.trim() : '';
+  const maskUrl    = $('cf-mask-url') ? $('cf-mask-url').value.trim() : '';
+  const layout     = $('cf-layout').value;
+
+  const overlayData = pendingImages['overlay'] || (overlayUrl ? toRaw(overlayUrl) : '');
+  const maskData    = pendingImages['mask']    || (maskUrl ? toRaw(maskUrl) : null);
+
+  if (!name) { showAlert('กรุณาใส่ชื่อเฟรม'); return; }
+  if (!overlayData) { showAlert('กรุณาอัปโหลดหรือวาง URL รูปกรอบ'); return; }
+  if (!layout) { showAlert('กรุณาเลือก Layout'); return; }
+
+  const frame = {
+    id: 'custom_' + Date.now(), name, category: 'custom', custom: true,
+    supportedLayouts: [layout],
+    overlay: overlayData, mask: maskData
+  };
+  FRAMES.push(frame);
+  saveAllFrames();
+  pendingImages = {};
+
+  $('cf-name').value = '';
+  if($('cf-overlay-url')) $('cf-overlay-url').value = '';
+  if($('cf-mask-url')) $('cf-mask-url').value = '';
+  $('cf-overlay-preview').innerHTML = '<span class="text-[10px] text-gray-400 font-bold">📷 แตะเพื่ออัปโหลด</span>';
+  $('cf-mask-preview').innerHTML = '<span class="text-[10px] text-gray-400 font-bold">📷 แตะเพื่ออัปโหลด</span>';
+  renderAllFramesList();
+  showAlert(`เพิ่มเฟรม "${name}" สำเร็จ! 🎉`);
+}
+
+function renderAllFramesList() {
+  const container = $('all-frames-list'); if (!container) return;
+  $('frame-count').innerText = FRAMES.length;
+  container.innerHTML = '';
+
+  FRAMES.forEach(frame => {
+    const layoutNames = frame.supportedLayouts.map(lid => {
+      const l = LAYOUTS.find(x => x.id === lid);
+      return l ? l.name : lid;
+    }).join(', ');
+
+    const isCustom  = frame.custom;
+    const isEdited  = frame.edited;
+    const badge     = isCustom ? '<span class="text-[7px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full font-bold">CUSTOM</span>'
+                    : isEdited ? '<span class="text-[7px] bg-yellow-100 text-yellow-600 px-1.5 py-0.5 rounded-full font-bold">EDITED</span>'
+                    : '<span class="text-[7px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full font-bold">BUILT-IN</span>';
+
+    const card = document.createElement('div');
+    card.className = 'flex items-center gap-2 bg-white rounded-xl p-2.5 mb-2 border border-gray-200 shadow-sm';
+    card.innerHTML = `
+      <div class="w-12 h-12 rounded-lg border border-gray-200 bg-gray-50 shrink-0 overflow-hidden flex items-center justify-center">
+        <img src="${frame.overlay}" class="w-full h-full object-contain" onerror="this.parentElement.innerHTML='❌'" />
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="font-black text-[11px] text-gray-700 truncate">${frame.name}</p>
+        <p class="text-[8px] text-gray-400 truncate">${layoutNames}</p>
+        <div class="mt-0.5">${badge}</div>
+      </div>
+      <button onclick="openEditFrame('${frame.id}')" class="w-8 h-8 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center font-bold text-[14px] active:scale-90 shrink-0">✏️</button>
+      ${isCustom || isEdited ? `<button onclick="deleteFrame('${frame.id}')" class="w-8 h-8 bg-red-50 text-red-500 rounded-full flex items-center justify-center font-bold text-[14px] active:scale-90 shrink-0">🗑</button>` : ''}
+    `;
+    container.appendChild(card);
+  });
+}
+
+// ── Edit Frame ───────────────────────────────────────────────────────────
+function openEditFrame(frameId) {
+  const frame = FRAMES.find(f => f.id === frameId);
+  if (!frame) return;
+  editingFrameId = frameId;
+  pendingImages = {};
+
+  $('ef-name').value = frame.name;
+  $('ef-overlay-preview').innerHTML = frame.overlay
+    ? `<img src="${frame.overlay}" class="w-full h-full object-contain" />`
+    : '<span class="text-[9px] text-gray-400">ไม่มีรูป</span>';
+  $('ef-mask-preview').innerHTML = frame.mask
+    ? `<img src="${frame.mask}" class="w-full h-full object-contain" />`
+    : '<span class="text-[9px] text-gray-400">ไม่มี</span>';
+
+  populateLayoutSelect('ef-layout');
+  $('ef-layout').value = frame.supportedLayouts[0] || '';
+
+  $('edit-frame-modal').classList.remove('hidden'); $('edit-frame-modal').classList.add('flex');
+}
+
+function closeEditModal() {
+  $('edit-frame-modal').classList.remove('flex'); $('edit-frame-modal').classList.add('hidden');
+  editingFrameId = null; pendingImages = {};
+}
+
+function saveEditFrame() {
+  const frame = FRAMES.find(f => f.id === editingFrameId);
+  if (!frame) return;
+
+  const name   = $('ef-name').value.trim();
+  const layout = $('ef-layout').value;
+  if (!name) { showAlert('กรุณาใส่ชื่อ'); return; }
+  if (!layout) { showAlert('กรุณาเลือก Layout'); return; }
+
+  frame.name = name;
+  frame.supportedLayouts = [layout];
+  if (pendingImages['edit-overlay']) frame.overlay = pendingImages['edit-overlay'];
+  if (pendingImages['edit-mask'])    frame.mask    = pendingImages['edit-mask'];
+  if (!frame.custom) frame.edited = true;
+
+  // Clear cached assets for this frame
+  assetsCache = {}; slotAssetsData = [];
+
+  saveAllFrames();
+  closeEditModal();
+  renderAllFramesList();
+  showAlert(`บันทึก "${name}" แล้ว ✅`);
+}
+
+function deleteFrame(frameId) {
+  const frame = FRAMES.find(f => f.id === frameId);
+  if (!frame) return;
+
+  if (frame.edited && !frame.custom) {
+    // Restore built-in to original — just remove the edited flag and saved data
+    delete frame.edited;
+    // Reload original from the hardcoded FRAMES... tricky.
+    // For simplicity, just delete from saved list
+    saveAllFrames();
+    renderAllFramesList();
+    showAlert('คืนค่าเฟรมเดิมแล้ว (ต้อง reload เพื่อเห็นต้นฉบับ)');
+    return;
+  }
+
+  const idx = FRAMES.findIndex(f => f.id === frameId);
+  if (idx !== -1) FRAMES.splice(idx, 1);
+  if (currentFrame && currentFrame.id === frameId) currentFrame = null;
+  saveAllFrames();
+  renderAllFramesList();
+}
+
+function init() { loadCustomFrames(); initCarouselSwipe(); initPanEvents(); renderFilters(); preloadAssets(); initIdleTimer(); }
 
 function preloadAssets() {
   [...FRAMES.map(f=>f.mask).filter(Boolean), ...FRAMES.map(f=>f.overlay).filter(Boolean)].forEach(url=>{
@@ -1721,7 +2132,7 @@ function updateCarousel(){
 }
 function prevLayout(){ carouselIndex=(carouselIndex-1+activeLayouts.length)%activeLayouts.length; slotAssetsData=[]; assetsCache={}; forceHardReset(); updateCarousel(); }
 function nextLayout(){ carouselIndex=(carouselIndex+1)%activeLayouts.length; slotAssetsData=[]; assetsCache={}; forceHardReset(); updateCarousel(); }
-function confirmLayout(){ playSfx('beep'); const card=$('carousel-layout-card'); if(card){card.style.transform='scale(0.95)'; setTimeout(()=>{card.style.transform='none'; navigate('FRAME');},150);} else navigate('FRAME'); }
+function confirmLayout(){ playSfx('beep'); const card=$('carousel-layout-card'); if(card){card.style.transform='scale(0.95)'; setTimeout(()=>{card.style.transform='none'; navigate('FILTER');},150);} else navigate('FILTER'); }
 
 let carouselStartX=0;
 function initCarouselSwipe(){
@@ -1731,23 +2142,33 @@ function initCarouselSwipe(){
 }
 function renderFrameTabs(){
   $('frame-category-tabs').innerHTML='';
-  CATEGORIES.forEach(cat=>{ if(availableFrames.filter(f=>f.category===cat).length>0) $('frame-category-tabs').innerHTML+=`<button class="category-tab active">EXCLUSIVE FRAMES</button>`; });
+  const builtIn = FRAMES.filter(f => !f.custom).length;
+  const custom  = FRAMES.filter(f => f.custom).length;
+  $('frame-category-tabs').innerHTML = `<button class="category-tab active">ALL (${FRAMES.length + 1})</button>`;
+  if (custom > 0) $('frame-category-tabs').innerHTML += `<button class="category-tab active" style="background:#4db8ff">CUSTOM (${custom})</button>`;
 }
 function renderFrameGrid(){
   const c=$('frame-grid-container'); c.innerHTML='';
-  if(availableFrames.length===0){ c.innerHTML='<div class="col-span-4 text-center text-xs text-pink-500 font-bold py-8 bg-white/50 rounded-xl">ไม่มีกรอบสำหรับ Layout นี้<br><span class="text-gray-400 text-[10px]">ระบบจะพิมพ์แบบเต็มแผ่น 4x6" ให้โดยอัตโนมัติ 🎀</span></div>'; return; }
-  availableFrames.forEach(frame=>{
-    const btn=document.createElement('div'); const sel=currentFrame&&currentFrame.id===frame.id;
-    btn.className=`frame-thumb bg-white/90 backdrop-blur border-[3px] border-[#f2ede9] p-1.5 rounded-xl shadow-sm flex flex-col items-center justify-center text-center cursor-pointer active:scale-[0.95] ${sel?'selected border-[#ff4d9a] bg-[#fff0f5]':''}`;
-    btn.onclick=()=>{ currentFrame=frame; slotAssetsData=[]; assetsCache={}; renderFrameGrid(); updateSelectedFrameUI(); playSfx('beep'); };
-    btn.innerHTML=`<div class="w-full aspect-square mb-1 rounded border border-gray-200 shadow-inner relative overflow-hidden bg-gray-100 flex items-center justify-center"><img src="${frame.overlay}" style="width:100%;height:100%;object-fit:contain;" crossorigin="anonymous" onerror="this.style.opacity='0.3'"/></div><h3 class="font-black text-[#6e6367] text-[7px] uppercase leading-tight truncate w-full">${frame.name}</h3>`;
-    c.appendChild(btn);
-  });
+  if(availableFrames.length===0){
+    c.innerHTML='<div class="col-span-4 text-center text-xs text-pink-500 font-bold py-4 bg-white/50 rounded-xl">ไม่มีกรอบสำหรับ Layout นี้<br><span class="text-gray-400 text-[10px]">ระบบจะพิมพ์แบบเต็มแผ่น 4x6" 🎀</span></div>';
+  } else {
+    availableFrames.forEach(frame=>{
+      const btn=document.createElement('div'); const sel=currentFrame&&currentFrame.id===frame.id;
+      btn.className=`frame-thumb bg-white/90 backdrop-blur border-[3px] border-[#f2ede9] p-1.5 rounded-xl shadow-sm flex flex-col items-center justify-center text-center cursor-pointer active:scale-[0.95] ${sel?'selected border-[#ff4d9a] bg-[#fff0f5]':''}`;
+      btn.onclick=()=>{ currentFrame=frame; slotAssetsData=[]; assetsCache={}; renderFrameGrid(); updateSelectedFrameUI(); playSfx('beep'); };
+      btn.innerHTML=`<div class="w-full aspect-square mb-1 rounded border border-gray-200 shadow-inner relative overflow-hidden bg-gray-100 flex items-center justify-center"><img src="${frame.overlay}" style="width:100%;height:100%;object-fit:contain;" crossorigin="anonymous" onerror="this.style.opacity='0.3'"/></div><h3 class="font-black text-[#6e6367] text-[7px] uppercase leading-tight truncate w-full">${frame.name}</h3>`;
+      c.appendChild(btn);
+    });
+  }
+  // ★ Always show "Add Frame" button
+  const addBtn=document.createElement('div');
+  addBtn.className='frame-thumb bg-white/80 border-[3px] border-dashed border-gray-300 p-1.5 rounded-xl flex flex-col items-center justify-center text-center cursor-pointer active:scale-[0.95] hover:border-[#ff4d9a]';
+  addBtn.onclick=()=>{ playSfx('beep'); openFrameManager(); };
+  addBtn.innerHTML='<div class="w-full aspect-square mb-1 flex items-center justify-center text-2xl text-gray-400">➕</div><h3 class="font-black text-gray-400 text-[7px] uppercase">ADD FRAME</h3>';
+  c.appendChild(addBtn);
 }
 function updateSelectedFrameUI(){
-  if(!currentFrame){$('selected-frame-name').innerText='No Frame';$('selected-frame-thumb').innerHTML='<div class="text-xl">✨</div>';return;}
-  $('selected-frame-thumb').innerHTML=`<img src="${currentFrame.overlay}" class="w-full h-full object-contain" crossorigin="anonymous"/>`;
-  $('selected-frame-name').innerText=currentFrame.name;
+  // Frame info now shown in carousel and frame grid selection state
 }
 
 async function shareFile(dataUrl, filename, mimeType) {
