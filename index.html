@@ -126,20 +126,19 @@ width: 100%;
 }
 #camera-video {
 display: block;
+position: absolute;
+top: 0; left: 0;
 width: 100%;
 height: 100%;
 object-fit: cover;
-position: relative;
-z-index: 1;
 }
 #preview-canvas {
 display: block;
-width: 100%;
-height: 100%;
 position: absolute;
 top: 0; left: 0;
-z-index: 2;
-pointer-events: none;
+width: 100%;
+height: 100%;
+visibility: hidden;
 }
 .review-photo-container {
 position: relative;
@@ -727,9 +726,9 @@ function forceHardReset() {
   if (previewRAF) { cancelAnimationFrame(previewRAF); previewRAF = null; }
   // Clear CSS filter applied by Tier 1 preview
   const pc = $('preview-canvas');
-  if (pc) { pc.style.filter = ''; pc.style.WebkitMaskImage = 'none'; pc.style.maskImage = 'none'; pc.style.removeProperty('-webkit-mask-image'); pc.style.removeProperty('mask-image'); const pctx = pc.getContext('2d'); pctx.clearRect(0,0,pc.width,pc.height); }
+  if (pc) { pc.style.filter=''; pc.style.visibility='hidden'; pc.style.WebkitMaskImage='none'; pc.style.maskImage='none'; pc.style.removeProperty('-webkit-mask-image'); pc.style.removeProperty('mask-image'); const pctx=pc.getContext('2d'); pctx.clearRect(0,0,pc.width,pc.height); }
   const vid = $('camera-video');
-  if (vid) { vid.style.filter = ''; vid.style.WebkitMaskImage = 'none'; vid.style.maskImage = 'none'; vid.style.removeProperty('-webkit-mask-image'); vid.style.removeProperty('mask-image'); vid.style.transform = ''; }
+  if (vid) { vid.style.filter=''; vid.style.visibility='visible'; vid.style.WebkitMaskImage='none'; vid.style.maskImage='none'; vid.style.removeProperty('-webkit-mask-image'); vid.style.removeProperty('mask-image'); vid.style.transform=''; }
   const ov = $('preview-frame-overlay'); if (ov) { ov.style.display = 'none'; ov.removeAttribute('src'); }
 
   capturedPhotos = []; photoTransforms = []; capturedPhotoRatios = [];
@@ -1460,10 +1459,9 @@ async function startCamera() {
     // ★ Apply frame mask + overlay on the video element (CSS mask = GPU, no canvas needed)
     applyFramePreview();
 
-    // ★ Default: video visible, canvas transparent on top (always this way)
-    // Clear canvas to make it transparent
-    const cCtx = canvas.getContext('2d');
-    cCtx.clearRect(0, 0, canvas.width, canvas.height);
+    // ★ Default: video visible, canvas hidden
+    vid.style.visibility = 'visible';
+    canvas.style.visibility = 'hidden';
 
     // If BG removal is active, switch to canvas mode
     if (bgRemovalMode !== 0 && hasAiResult) {
@@ -1479,28 +1477,34 @@ async function startCamera() {
   }
 }
 
-// ★ SIMPLE ARCHITECTURE: canvas always overlays video (z-index:2)
-// BG OFF: canvas empty (transparent) → video shows through
-// BG ON: canvas drawn with BG-removed content → covers video
-// No display/opacity/position switching needed!
-
+// ★ Use visibility (not display) to switch — iOS Safari keeps decoding when visibility:hidden
 function switchToBgCanvasMode() {
+  const vid = $('camera-video');
+  const canvas = $('preview-canvas');
+  if (vid) vid.style.visibility = 'hidden';
+  if (canvas) {
+    canvas.style.visibility = 'visible';
+    // ★ Force set canvas buffer to match container size
+    const container = $('camera-viewport');
+    if (container) {
+      const w = container.clientWidth, h = container.clientHeight;
+      if (w > 0 && h > 0 && (canvas.width !== w || canvas.height !== h)) {
+        canvas.width = w; canvas.height = h;
+      }
+    }
+  }
   if (!previewLoopRunning) startBgPreviewLoop();
 }
 
 function switchToVideoMode() {
+  const vid = $('camera-video');
+  const canvas = $('preview-canvas');
+  if (canvas) { canvas.style.visibility = 'hidden'; const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height); }
+  if (vid) vid.style.visibility = 'visible';
   previewLoopRunning = false;
   if (previewRAF) { cancelAnimationFrame(previewRAF); previewRAF = null; }
-  // Clear canvas → becomes transparent → video shows through
-  const canvas = $('preview-canvas');
-  if (canvas) {
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-  }
-  // Re-apply CSS filter on video
   let cssFilter = currentFilter.css;
   if (cssFilter === 'popart') cssFilter = 'hue-rotate(90deg) saturate(1.8) contrast(1.1)';
-  const vid = $('camera-video');
   if (vid) {
     vid.style.filter = (cssFilter && cssFilter !== 'none') ? cssFilter : '';
     vid.style.transform = isFacingUser ? 'scaleX(-1)' : '';
