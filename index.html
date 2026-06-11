@@ -129,6 +129,8 @@ display: block;
 width: 100%;
 height: 100%;
 object-fit: cover;
+position: relative;
+z-index: 1;
 }
 #preview-canvas {
 position: absolute;
@@ -136,6 +138,9 @@ top: 0; left: 0;
 width: 100%;
 height: 100%;
 visibility: hidden;
+z-index: 10;
+-webkit-transform: translateZ(0);
+transform: translateZ(0);
 }
 .review-photo-container {
 position: relative;
@@ -2257,11 +2262,19 @@ function updateSelectedFrameUI(){
 
 async function shareFile(dataUrl, filename, mimeType) {
   if(!dataUrl) return;
+  // ★ Temporarily remove overflow:hidden so share sheet isn't clipped
+  const appC = $('app-container');
+  const bodyOF = document.body.style.overflow;
+  if (appC) appC.style.overflow = 'visible';
+  document.body.style.overflow = 'auto';
   try {
     const res=await fetch(dataUrl); const blob=await res.blob(); const file=new File([blob],filename,{type:mimeType});
     if(navigator.canShare&&navigator.canShare({files:[file]})) await navigator.share({title:'Tinkle Photo Club ✨',text:'ดูรูปน่ารักๆ ของฉันสิ! 📸🎀',files:[file]});
     else throw new Error('no share support');
-  } catch(err){ showAlert('อุปกรณ์ของคุณไม่รองรับการแชร์โดยตรง ระบบจะทำการดาวน์โหลดให้แทนนะคะ 🥺'); if(mimeType==='image/gif') downloadGif(); else downloadImage(); }
+  } catch(err){ if(err.name!=='AbortError') { showAlert('อุปกรณ์ของคุณไม่รองรับการแชร์โดยตรง ระบบจะทำการดาวน์โหลดให้แทนนะคะ 🥺'); if(mimeType==='image/gif') downloadGif(); else downloadImage(); } }
+  // Restore overflow
+  if (appC) appC.style.overflow = 'hidden';
+  document.body.style.overflow = bodyOF || 'hidden';
 }
 function downloadImage(){ if(!finalComposedUrl) return; const a=document.createElement('a'); a.href=finalComposedUrl; a.download=`tinkle_photo_${Date.now()}.jpg`; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
 function downloadGif(){ if(!finalGifUrl) return; const a=document.createElement('a'); a.href=finalGifUrl; a.download=`tinkle_animation_${Date.now()}.gif`; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
