@@ -455,10 +455,13 @@ overflow: hidden;
     <div class="shrink-0 w-full px-5 flex flex-col gap-2 mt-auto pb-6 border-t border-gray-100 pt-2">
       <div class="flex gap-2 w-full">
         <button class="flex-1 bg-gray-100 text-[#6e6367] font-black py-2 rounded-xl shadow-sm active:scale-95 flex items-center justify-center gap-1 border border-gray-200" onclick="downloadImage()">
-          <span class="text-lg">📥</span><span class="text-[10px]">SAVE JPG</span>
+          <span class="text-lg">📥</span><span class="text-[10px]">SAVE</span>
         </button>
         <button class="flex-1 bg-[#4db8ff] text-white font-black py-2 rounded-xl shadow-sm active:scale-95 flex items-center justify-center gap-1 border border-blue-400" onclick="shareFile(finalComposedUrl, 'tinkle_photo.jpg', 'image/jpeg')">
           <span class="text-lg">📤</span><span class="text-[10px]">SHARE</span>
+        </button>
+        <button class="flex-1 bg-[#34c759] text-white font-black py-2 rounded-xl shadow-sm active:scale-95 flex items-center justify-center gap-1 border border-green-500" onclick="openInBrowser(finalComposedUrl)">
+          <span class="text-lg">📲</span><span class="text-[10px]">AIRDROP</span>
         </button>
       </div>
       <div id="gif-controls" class="flex gap-2 w-full hidden opacity-0 transition-opacity duration-500">
@@ -2262,19 +2265,51 @@ function updateSelectedFrameUI(){
 
 async function shareFile(dataUrl, filename, mimeType) {
   if(!dataUrl) return;
-  // ★ Temporarily remove overflow:hidden so share sheet isn't clipped
-  const appC = $('app-container');
-  const bodyOF = document.body.style.overflow;
-  if (appC) appC.style.overflow = 'visible';
-  document.body.style.overflow = 'auto';
+
+  // ★ Remove ALL constraints that block the iOS share sheet
+  const html = document.documentElement;
+  const body = document.body;
+  const app  = $('app-container');
+  const saved = {
+    htmlOF: html.style.overflow, bodyOF: body.style.overflow,
+    bodyH: body.style.height, appOF: app?app.style.overflow:'',
+    appH: app?app.style.height:'', appMaxH: app?app.style.maxHeight:''
+  };
+  html.style.overflow = 'visible';
+  body.style.overflow  = 'visible';
+  body.style.height    = 'auto';
+  if (app) { app.style.overflow = 'visible'; app.style.height = 'auto'; app.style.maxHeight = 'none'; }
+
   try {
-    const res=await fetch(dataUrl); const blob=await res.blob(); const file=new File([blob],filename,{type:mimeType});
-    if(navigator.canShare&&navigator.canShare({files:[file]})) await navigator.share({title:'Tinkle Photo Club ✨',text:'ดูรูปน่ารักๆ ของฉันสิ! 📸🎀',files:[file]});
-    else throw new Error('no share support');
-  } catch(err){ if(err.name!=='AbortError') { showAlert('อุปกรณ์ของคุณไม่รองรับการแชร์โดยตรง ระบบจะทำการดาวน์โหลดให้แทนนะคะ 🥺'); if(mimeType==='image/gif') downloadGif(); else downloadImage(); } }
-  // Restore overflow
-  if (appC) appC.style.overflow = 'hidden';
-  document.body.style.overflow = bodyOF || 'hidden';
+    const res  = await fetch(dataUrl);
+    const blob = await res.blob();
+    const file = new File([blob], filename, {type: mimeType});
+    if (navigator.canShare && navigator.canShare({files:[file]})) {
+      await navigator.share({title:'Tinkle Photo Club ✨', files:[file]});
+    } else { throw new Error('no share'); }
+  } catch(err) {
+    if (err.name !== 'AbortError') {
+      // Fallback: download
+      if(mimeType==='image/gif') downloadGif(); else downloadImage();
+    }
+  }
+
+  // Restore constraints
+  html.style.overflow  = saved.htmlOF;
+  body.style.overflow   = saved.bodyOF;
+  body.style.height     = saved.bodyH;
+  if (app) { app.style.overflow = saved.appOF; app.style.height = saved.appH; app.style.maxHeight = saved.appMaxH; }
+}
+
+// ★ Fallback: open image in new Safari tab for native AirDrop
+function openInBrowser(dataUrl) {
+  if(!dataUrl) return;
+  try {
+    fetch(dataUrl).then(r=>r.blob()).then(blob=>{
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    });
+  } catch(e) { downloadImage(); }
 }
 function downloadImage(){ if(!finalComposedUrl) return; const a=document.createElement('a'); a.href=finalComposedUrl; a.download=`tinkle_photo_${Date.now()}.jpg`; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
 function downloadGif(){ if(!finalGifUrl) return; const a=document.createElement('a'); a.href=finalGifUrl; a.download=`tinkle_animation_${Date.now()}.gif`; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
