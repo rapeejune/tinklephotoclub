@@ -2301,20 +2301,24 @@ async function shareFile(dataUrl, filename, mimeType) {
   if (app) { app.style.overflow = saved.appOF; app.style.height = saved.appH; app.style.maxHeight = saved.appMaxH; }
 }
 
-// ★ Open image in new Safari tab for AirDrop — must be SYNC from click gesture
+// ★ Open a dedicated share page in new Safari tab with big share button
 function openInBrowser(dataUrl) {
   if(!dataUrl) return;
-  // Create a mini HTML page with the image embedded
-  var htmlContent = '<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tinkle Photo</title></head><body style="margin:0;background:#000;display:flex;justify-content:center;align-items:center;min-height:100vh;"><img src="' + dataUrl + '" style="max-width:100%;max-height:100vh;object-fit:contain;"/></body></html>';
-  var blob = new Blob([htmlContent], {type: 'text/html'});
+  // Encode share/save functions as inline handlers (avoid embedded script tags)
+  var shareCode = 'javascript:void(fetch(document.getElementById(&quot;photo&quot;).src).then(function(r){return r.blob()}).then(function(b){var f=new File([b],&quot;tinkle.jpg&quot;,{type:&quot;image/jpeg&quot;});navigator.share({title:&quot;Tinkle&quot;,files:[f]}).catch(function(){})}).catch(function(){}))';
+  var saveCode = 'javascript:void(function(){var a=document.createElement(&quot;a&quot;);a.href=document.getElementById(&quot;photo&quot;).src;a.download=&quot;tinkle_photo.jpg&quot;;a.click()}())';
+  var page = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Share Photo</title></head>'
+    + '<body style="margin:0;font-family:-apple-system,sans-serif;background:#1a1a2e;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px">'
+    + '<p style="font-size:24px;font-weight:900;margin:10px 0">📸 Tinkle Photo Club</p>'
+    + '<img id="photo" src="' + dataUrl + '" style="max-width:90%;max-height:50vh;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,0.5);margin:20px 0" />'
+    + '<a href="' + shareCode + '" style="display:block;width:90%;max-width:360px;padding:22px;border-radius:16px;font-size:22px;font-weight:900;text-align:center;text-decoration:none;background:linear-gradient(135deg,#ff4d9a,#ff2a85);color:#fff;margin:8px 0;box-shadow:0 8px 25px rgba(255,42,133,0.4)">📤 แตะเพื่อแชร์ / AirDrop</a>'
+    + '<a href="' + saveCode + '" style="display:block;width:90%;max-width:360px;padding:18px;border-radius:16px;font-size:18px;font-weight:900;text-align:center;text-decoration:none;background:#34c759;color:#fff;margin:8px 0">📥 บันทึกรูป</a>'
+    + '<p style="font-size:13px;color:#999;margin:15px 0;text-align:center;line-height:1.6">💡 <b>วิธี AirDrop:</b> กดปุ่มชมพูด้านบน → เลื่อน share sheet ขึ้น<br>หรือ <b>กดค้างที่รูป</b> → Share → AirDrop</p>'
+    + '</body></html>';
+  var blob = new Blob([page], {type: 'text/html'});
   var url = URL.createObjectURL(blob);
-  // Must call window.open SYNCHRONOUSLY in click handler — no async/await
   var w = window.open(url, '_blank');
-  if (!w) {
-    // Popup blocked — fallback: navigate current page with back option
-    showAlert('กรุณากดค้างที่รูปเพื่อบันทึก แล้วแชร์ผ่าน Photos app ค่ะ 📸');
-    downloadImage();
-  }
+  if (!w) { showAlert('กดค้างที่รูปเพื่อบันทึก แล้วแชร์ผ่าน Photos app ค่ะ 📸'); downloadImage(); }
 }
 function downloadImage(){ if(!finalComposedUrl) return; const a=document.createElement('a'); a.href=finalComposedUrl; a.download=`tinkle_photo_${Date.now()}.jpg`; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
 function downloadGif(){ if(!finalGifUrl) return; const a=document.createElement('a'); a.href=finalGifUrl; a.download=`tinkle_animation_${Date.now()}.gif`; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
