@@ -2301,15 +2301,20 @@ async function shareFile(dataUrl, filename, mimeType) {
   if (app) { app.style.overflow = saved.appOF; app.style.height = saved.appH; app.style.maxHeight = saved.appMaxH; }
 }
 
-// ★ Fallback: open image in new Safari tab for native AirDrop
+// ★ Open image in new Safari tab for AirDrop — must be SYNC from click gesture
 function openInBrowser(dataUrl) {
   if(!dataUrl) return;
-  try {
-    fetch(dataUrl).then(r=>r.blob()).then(blob=>{
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
-    });
-  } catch(e) { downloadImage(); }
+  // Create a mini HTML page with the image embedded
+  var htmlContent = '<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tinkle Photo</title></head><body style="margin:0;background:#000;display:flex;justify-content:center;align-items:center;min-height:100vh;"><img src="' + dataUrl + '" style="max-width:100%;max-height:100vh;object-fit:contain;"/></body></html>';
+  var blob = new Blob([htmlContent], {type: 'text/html'});
+  var url = URL.createObjectURL(blob);
+  // Must call window.open SYNCHRONOUSLY in click handler — no async/await
+  var w = window.open(url, '_blank');
+  if (!w) {
+    // Popup blocked — fallback: navigate current page with back option
+    showAlert('กรุณากดค้างที่รูปเพื่อบันทึก แล้วแชร์ผ่าน Photos app ค่ะ 📸');
+    downloadImage();
+  }
 }
 function downloadImage(){ if(!finalComposedUrl) return; const a=document.createElement('a'); a.href=finalComposedUrl; a.download=`tinkle_photo_${Date.now()}.jpg`; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
 function downloadGif(){ if(!finalGifUrl) return; const a=document.createElement('a'); a.href=finalGifUrl; a.download=`tinkle_animation_${Date.now()}.gif`; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
