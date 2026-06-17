@@ -25,8 +25,6 @@ link.rel = 'manifest'; link.href = manifestURL;
 document.head.appendChild(link);
 </script>
 
-<!-- ✅ FIX: โหลด MediaPipe แบบ lazy (ไม่โหลดอัตโนมัติตอนเปิดหน้า) -->
-
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gifshot/0.3.2/gifshot.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Varela+Round&family=M+PLUS+Rounded+1c:wght@700&display=swap" rel="stylesheet">
@@ -404,7 +402,6 @@ overflow: hidden;
 <span id="shot-counter-text" class="text-[10px] font-black text-white drop-shadow-md bg-pink-500/90 px-3 py-1 rounded-full">SHOT 1/4</span>
 </div>
 
-<!-- ✅ FIX: ซ่อนปุ่ม BG บน iOS รุ่นเก่าที่ไม่รองรับ MediaPipe -->
 <button id="bg-toggle-btn" onclick="event.stopPropagation(); toggleBgRemoval();" class="absolute bottom-2 right-2 z-40 h-8 px-2 bg-black/50 backdrop-blur rounded-full flex items-center justify-center text-white active:scale-95 border border-white/30 font-black text-[10px] shadow-md transition-colors pointer-events-auto">
   🪄 BG: OFF
 </button>
@@ -452,23 +449,31 @@ overflow: hidden;
     <div class="pt-3 px-4 text-center shrink-0">
       <h2 class="header-title"><span class="text-yellow-400 text-base mr-1">⭐5</span> Ready to Print!</h2>
     </div>
-    <div class="flex-1 w-full flex items-center justify-center p-2 min-h-0 overflow-hidden relative">
-      <img id="final-image" src="" class="max-w-[80%] max-h-full shadow-md border-2 border-gray-200 object-contain fade-in rounded-[8px]" />
-    </div>
-    <div style="flex-shrink:0;padding:4px 10px 4px;display:flex;flex-direction:column;gap:3px;">
-      <div style="display:flex;gap:3px;">
-        <button onclick="downloadImage()" style="flex:1;background:#f3f3f3;border:1px solid #ddd;border-radius:10px;padding:8px 4px;font-weight:900;font-size:9px;text-align:center;color:#6e6367;">📥 SAVE</button>
-        <button onclick="shareFile(finalComposedUrl,'tinkle_photo.jpg','image/jpeg')" style="flex:1;background:#4db8ff;border:1px solid #3aa0e6;border-radius:10px;padding:8px 4px;font-weight:900;font-size:9px;text-align:center;color:#fff;">📤 SHARE</button>
-        <button onclick="openInBrowser(finalComposedUrl)" style="flex:1;background:#34c759;border:1px solid #2ba84a;border-radius:10px;padding:8px 4px;font-weight:900;font-size:9px;text-align:center;color:#fff;">📲 AIRDROP</button>
-        <button onclick="resetApp()" style="flex:1;background:#ff4d9a;border:1px solid #e6438a;border-radius:10px;padding:8px 4px;font-weight:900;font-size:9px;text-align:center;color:#fff;">🏠 NEW</button>
+    
+    <!-- แบ่ง Layout เป็นซ้าย(ภาพ) และ ขวา(ปุ่มกด) -->
+    <div class="flex-1 w-full flex flex-row p-3 gap-3 min-h-0 overflow-hidden relative">
+      
+      <!-- พื้นที่รูปภาพ (ซ้าย) -->
+      <div class="flex-1 h-full flex items-center justify-center min-w-0">
+        <img id="final-image" src="" class="max-w-full max-h-full shadow-md border-2 border-gray-200 object-contain fade-in rounded-[8px]" />
       </div>
-      <div id="gif-controls" class="hidden" style="display:none;gap:3px;">
-        <button onclick="downloadGif()" style="flex:1;background:#ffdae0;border:1px solid #f0c0cc;border-radius:10px;padding:6px;font-weight:900;font-size:9px;text-align:center;color:#ff2a85;">🎬 GIF</button>
-        <button onclick="shareFile(finalGifUrl,'tinkle_anim.gif','image/gif')" style="flex:1;background:#ff4d9a;border:1px solid #e6438a;border-radius:10px;padding:6px;font-weight:900;font-size:9px;text-align:center;color:#fff;">🚀 SHARE GIF</button>
+      
+      <!-- พื้นที่ปุ่มควบคุม (ขวา) -->
+      <div class="w-[70px] shrink-0 flex flex-col justify-center gap-2 h-full overflow-y-auto no-scrollbar pb-2">
+        <button onclick="downloadImage()" style="width:100%;background:#f3f3f3;border:1px solid #ddd;border-radius:10px;padding:10px 4px;font-weight:900;font-size:9px;text-align:center;color:#6e6367;line-height:1.4;">📥<br>SAVE</button>
+        <button onclick="shareFile(finalComposedUrl,'tinkle_photo.jpg','image/jpeg')" style="width:100%;background:#4db8ff;border:1px solid #3aa0e6;border-radius:10px;padding:10px 4px;font-weight:900;font-size:9px;text-align:center;color:#fff;line-height:1.4;">📤<br>SHARE</button>
+        <button onclick="openInBrowser(finalComposedUrl)" style="width:100%;background:#34c759;border:1px solid #2ba84a;border-radius:10px;padding:10px 4px;font-weight:900;font-size:8px;text-align:center;color:#fff;line-height:1.4;">📲<br>AIRDROP</button>
+        <button onclick="resetApp()" style="width:100%;background:#ff4d9a;border:1px solid #e6438a;border-radius:10px;padding:10px 4px;font-weight:900;font-size:9px;text-align:center;color:#fff;line-height:1.4;">🏠<br>NEW</button>
+        
+        <!-- ส่วนของปุ่ม GIF (เมื่อกดถ่ายแบบ Multiple Shots) -->
+        <div id="gif-controls" class="hidden flex-col gap-2 w-full mt-1 transition-opacity duration-300 opacity-0">
+          <button onclick="downloadGif()" style="width:100%;background:#ffdae0;border:1px solid #f0c0cc;border-radius:10px;padding:8px 4px;font-weight:900;font-size:9px;text-align:center;color:#ff2a85;line-height:1.4;">🎬<br>GIF</button>
+          <button onclick="shareFile(finalGifUrl,'tinkle_anim.gif','image/gif')" style="width:100%;background:#ff4d9a;border:1px solid #e6438a;border-radius:10px;padding:8px 4px;font-weight:900;font-size:8px;text-align:center;color:#fff;line-height:1.4;">🚀<br>SHARE</button>
+        </div>
       </div>
+      
     </div>
   </div>
-  
 </div>
 
 </div>
